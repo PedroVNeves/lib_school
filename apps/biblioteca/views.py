@@ -94,6 +94,9 @@ class LivroDetailView(LoginRequiredMixin, DetailView):
         ctx['avaliacoes'] = avaliacoes
         ctx['minha_avaliacao'] = minha_avaliacao
         ctx['avaliacao_form'] = AvaliacaoForm(instance=minha_avaliacao)
+        ctx['ja_pegou_emprestado'] = Emprestimo.objects.filter(
+            usuario=self.request.user, livro=self.object
+        ).exists()
         return ctx
 
 
@@ -102,11 +105,14 @@ class AvaliacaoCreateView(LoginRequiredMixin, View):
         livro = get_object_or_404(Livro, pk=pk, escola=request.escola)
         form = AvaliacaoForm(request.POST)
         if form.is_valid():
-            gamificacao.criar_ou_atualizar_avaliacao(
-                usuario=request.user, livro=livro,
-                nota=form.cleaned_data['nota'], comentario=form.cleaned_data['comentario'],
-            )
-            messages.success(request, 'Avaliação registrada com sucesso.')
+            try:
+                gamificacao.criar_ou_atualizar_avaliacao(
+                    usuario=request.user, livro=livro,
+                    nota=form.cleaned_data['nota'], comentario=form.cleaned_data['comentario'],
+                )
+                messages.success(request, 'Avaliação registrada com sucesso.')
+            except GamificacaoError as exc:
+                messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
         else:
             messages.error(request, 'Não foi possível salvar a avaliação — confira a nota informada.')
         return redirect('livro-detail', pk=pk)

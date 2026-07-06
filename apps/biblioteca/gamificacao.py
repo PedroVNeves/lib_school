@@ -61,6 +61,10 @@ def marcar_livro_concluido(*, emprestimo, usuario_solicitante):
 
 
 def criar_ou_atualizar_avaliacao(*, usuario, livro, nota, comentario):
+    ja_pegou_emprestado = Emprestimo.objects.filter(usuario=usuario, livro=livro).exists()
+    if not ja_pegou_emprestado:
+        raise GamificacaoError('Você só pode avaliar livros que já pegou emprestado.')
+
     avaliacao, _ = Avaliacao.objects.update_or_create(
         usuario=usuario, livro=livro,
         defaults={'escola': livro.escola, 'nota': nota, 'comentario': comentario},

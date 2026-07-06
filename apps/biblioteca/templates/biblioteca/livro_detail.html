@@ -33,12 +33,16 @@
 <a href="{% url 'livro-list' %}">&larr; Voltar ao catálogo</a>
 
 <hr class="my-4">
+{% if ja_pegou_emprestado %}
 <h2 class="h5 mb-3">{% if minha_avaliacao %}Sua avaliação{% else %}Avaliar este livro{% endif %}</h2>
 <form method="post" action="{% url 'avaliacao-criar' livro.pk %}" class="mb-4" style="max-width: 500px;">
     {% csrf_token %}
     {{ avaliacao_form|crispy }}
     <button type="submit" class="btn btn-primary">{% if minha_avaliacao %}Atualizar avaliação{% else %}Enviar avaliação{% endif %}</button>
 </form>
+{% else %}
+<p class="text-muted small">Você poderá avaliar este livro depois de pegá-lo emprestado.</p>
+{% endif %}
 
 <h2 class="h5 mb-3">Avaliações de outros alunos</h2>
 {% for a in avaliacoes %}

@@ -24,7 +24,7 @@
                 {{ e.livro.titulo|slice:":1" }}
             </div>
             <div class="card-body">
-                <h5 class="card-title">{{ e.livro.titulo }}</h5>
+                <h5 class="card-title"><a href="{% url 'livro-detail' e.livro.pk %}" class="text-decoration-none">{{ e.livro.titulo }}</a></h5>
                 <p class="card-text mb-1 small text-muted">Devolução prevista: {{ e.data_prevista_devolucao|date:"d/m/Y" }}</p>
                 <p class="mb-2">
                 {% if e.status == 'devolvido' %}<span class="badge bg-secondary">Devolvido</span>
@@ -61,8 +61,14 @@
                 {% endif %}
                 <form method="post" action="{% url 'emprestimo-renovar-self' e.id %}">
                     {% csrf_token %}
-                    <button class="btn btn-sm btn-outline-primary" {% if not e.pode_renovar %}disabled title="Não elegível para renovação"{% endif %}>Renovar</button>
+                    <button class="btn btn-sm btn-outline-primary" {% if not e.pode_renovar %}disabled{% endif %}>Renovar</button>
                 </form>
+                {% if not e.pode_renovar %}
+                <p class="small text-muted mb-0 mt-1">
+                    {% if e.dias_atraso > 0 %}Regularize o atraso para poder renovar.
+                    {% else %}Limite de renovações atingido.{% endif %}
+                </p>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
