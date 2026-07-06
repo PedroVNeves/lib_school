@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+CREDENCIAIS_TESTE.txt
+media/
+staticfiles/
+*.log
+.git/
+.gitignore
+.DS_Store
+biblioteca_escolar_plano_completo.md

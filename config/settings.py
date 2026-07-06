@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import dj_database_url
 from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -7,6 +8,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+
+# Cloud Run (e qualquer proxy reverso) termina o HTTPS antes do container e
+# repassa a requisição em HTTP puro, sinalizando o esquema original neste header.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -24,6 +30,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -55,12 +62,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    # Produção (ex: Neon/Postgres) — string completa via variável de ambiente.
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+else:
+    # Dev local — inalterado.
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 AUTH_USER_MODEL = 'accounts.Usuario'
 
@@ -82,6 +95,25 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+
+# Storage de mídia (fotos/capas/logos) em produção: um bucket S3-compatível
+# (ex: Cloudflare R2). Sem essas variáveis, cai no disco local (só serve pra
+# dev — em Cloud Run os arquivos enviados se perdem a cada novo deploy/reinício).
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default=None)
+if AWS_STORAGE_BUCKET_NAME:
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3.S3Storage'}
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default=None)
+    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None)
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -114,8 +146,17 @@ CACHES = {
     }
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'Biblioteca Escolar <biblioteca@escola.local>'
+EMAIL_HOST = config('EMAIL_HOST', default=None)
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+else:
+    # Dev local — e-mails só aparecem no console do runserver.
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Biblioteca Escolar <biblioteca@escola.local>')
 
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
