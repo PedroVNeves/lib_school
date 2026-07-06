@@ -1,7 +1,7 @@
 import random
 import secrets
 import string
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -15,6 +15,7 @@ from apps.biblioteca.models import (
     Exemplar,
     Genero,
     Livro,
+    RegistroLeitura,
     Turma,
 )
 from apps.escolas.models import Escola, Vinculo
@@ -172,8 +173,11 @@ class Command(BaseCommand):
 
         if options['reset']:
             self.stdout.write('Removendo dados existentes...')
-            from apps.biblioteca.models import AuditLog
+            from apps.biblioteca.models import AuditLog, Avaliacao, EmprestimoTurma, ItemEmprestimoTurma
             AuditLog.objects.all().delete()
+            Avaliacao.objects.all().delete()
+            ItemEmprestimoTurma.objects.all().delete()
+            EmprestimoTurma.objects.all().delete()
             Emprestimo.objects.all().delete()
             Exemplar.objects.all().delete()
             Livro.objects.all().delete()
@@ -452,6 +456,7 @@ class Command(BaseCommand):
             data_saida=data_saida_dt, criado_em=data_saida_dt, atualizado_em=data_saida_dt
         )
 
+        data_real = None
         if cenario == 'devolvido':
             desvio = rng.randint(-5, 10)
             data_real = min(date.today(), data_prevista + timedelta(days=desvio))
@@ -461,7 +466,54 @@ class Command(BaseCommand):
         else:
             exemplar.status = 'emprestado'
         exemplar.save(update_fields=['status'])
+
+        emprestimo.escola = escola
+        emprestimo.data_saida = data_saida_dt
+        self._gerar_leitura(emprestimo, livro, cenario, data_saida_dt, data_real, rng)
         return emprestimo
+
+    def _gerar_leitura(self, emprestimo, livro, cenario, data_saida_dt, data_real, rng):
+        """Gera um histórico de progresso de leitura plausível pra popular o ranking/níveis."""
+        total_paginas = livro.num_paginas or rng.randint(150, 400)
+        fim = timezone.make_aware(datetime.combine(data_real, datetime.min.time())) if data_real else timezone.now()
+        janela_dias = max(1, (fim - data_saida_dt).days)
+
+        if cenario == 'devolvido':
+            terminou = rng.random() < 0.65
+            fracao_alvo = 1.0 if terminou else rng.uniform(0.2, 0.85)
+        elif cenario == 'ativo':
+            decorrido_pct = min(1.0, janela_dias / 14)
+            fracao_alvo = rng.uniform(0.1, 0.9) * decorrido_pct
+            terminou = False
+        else:  # atrasado — leitura estagnada
+            fracao_alvo = rng.uniform(0, 0.4)
+            terminou = False
+
+        pagina_alvo = max(0, min(total_paginas, round(total_paginas * fracao_alvo)))
+        if pagina_alvo <= 0:
+            return
+
+        qtd_registros = rng.randint(1, min(5, max(1, janela_dias)))
+        pagina_atual = 0
+        for i in range(qtd_registros):
+            pagina_nova = round(pagina_alvo * (i + 1) / qtd_registros)
+            if pagina_nova <= pagina_atual:
+                continue
+            data_registro = data_saida_dt + timedelta(
+                seconds=rng.uniform(0, max(1, (fim - data_saida_dt).total_seconds()))
+            )
+            registro = RegistroLeitura.objects.create(
+                escola=emprestimo.escola,
+                emprestimo=emprestimo,
+                usuario=emprestimo.usuario,
+                pagina_atual=pagina_nova,
+                paginas_incrementadas=pagina_nova - pagina_atual,
+            )
+            RegistroLeitura.objects.filter(pk=registro.pk).update(criado_em=data_registro)
+            pagina_atual = pagina_nova
+
+        if terminou:
+            Emprestimo.objects.filter(pk=emprestimo.pk).update(concluido=True, concluido_em=fim)
 
     def _criar_emprestimos_aleatorios(self, escola, alunos, professores, livros, responsavel, config, rng):
         # Controla quantos exemplares de cada livro já estão "emprestados" (ativo/atrasado)

@@ -48,7 +48,7 @@
                 <form method="post" action="{% url 'leitura-registrar' e.id %}" class="row g-2 mb-2">
                     {% csrf_token %}
                     <div class="col-7">
-                        <input type="number" name="pagina_atual" min="{{ e.pagina_atual_lida|add:1 }}" class="form-control form-control-sm" placeholder="Página atual" required>
+                        <input type="number" name="pagina_atual" min="1" class="form-control form-control-sm" placeholder="Página atual" required>
                     </div>
                     <div class="col-5">
                         <button class="btn btn-sm btn-outline-primary w-100">Atualizar</button>
