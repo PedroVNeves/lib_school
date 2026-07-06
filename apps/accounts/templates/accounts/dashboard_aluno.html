@@ -1,5 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
+<div class="stat-tile d-flex align-items-center gap-3 mb-4" style="height: auto;">
+    <div class="stat-accent" style="background: var(--seq-100); color: var(--series-1); font-size: 1.75rem;">{{ nivel.emoji }}</div>
+    <div class="flex-grow-1">
+        <div class="stat-label">Nível {{ nivel.numero }} — {{ nivel.nome }}</div>
+        <div class="small text-muted mb-1">{{ total_paginas_lidas }} página{{ total_paginas_lidas|pluralize }} lida{{ total_paginas_lidas|pluralize }} no total</div>
+        {% if nivel.proximo_nome %}
+        <div class="meter-track"><div class="meter-fill good" style="width: {{ nivel.progresso_pct }}%;"></div></div>
+        <div class="small text-muted mt-1">Faltam {{ nivel.paginas_faltantes }} página{{ nivel.paginas_faltantes|pluralize }} para virar {{ nivel.proximo_nome }}</div>
+        {% else %}
+        <div class="small text-muted mt-1">Nível máximo alcançado!</div>
+        {% endif %}
+    </div>
+    <a href="{% url 'ranking' %}" class="btn btn-outline-secondary btn-sm">Ver ranking</a>
+</div>
+
 <h1 class="h3 mb-4">Meus Empréstimos</h1>
 <div class="row g-3">
     {% for e in emprestimos %}
@@ -16,6 +31,7 @@
                 {% elif e.dias_atraso > 0 %}<span class="badge bg-danger">Atrasado ({{ e.dias_atraso }} dia{{ e.dias_atraso|pluralize }})</span>
                 {% elif e.dias_restantes <= 3 %}<span class="badge bg-warning text-dark">Vence em {{ e.dias_restantes }} dia{{ e.dias_restantes|pluralize }}</span>
                 {% else %}<span class="badge bg-success">Em dia · {{ e.dias_restantes }}d restantes</span>{% endif %}
+                {% if e.concluido %}<span class="badge bg-success">Concluído ✓</span>{% endif %}
                 </p>
                 {% if e.status != 'devolvido' %}
                 <div class="meter-track mb-2">
@@ -23,7 +39,26 @@
                 </div>
                 {% endif %}
                 <p class="small text-muted mb-2">Renovações: {{ e.renovacoes_realizadas }}</p>
+
                 {% if e.status != 'devolvido' %}
+                <p class="small mb-2">
+                    Leitura: página {{ e.pagina_atual_lida }}{% if e.livro.num_paginas %} de {{ e.livro.num_paginas }}{% endif %}
+                </p>
+                {% if not e.concluido %}
+                <form method="post" action="{% url 'leitura-registrar' e.id %}" class="row g-2 mb-2">
+                    {% csrf_token %}
+                    <div class="col-7">
+                        <input type="number" name="pagina_atual" min="{{ e.pagina_atual_lida|add:1 }}" class="form-control form-control-sm" placeholder="Página atual" required>
+                    </div>
+                    <div class="col-5">
+                        <button class="btn btn-sm btn-outline-primary w-100">Atualizar</button>
+                    </div>
+                </form>
+                <form method="post" action="{% url 'leitura-concluir' e.id %}" class="mb-2">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-success w-100">Terminei o livro 🎉</button>
+                </form>
+                {% endif %}
                 <form method="post" action="{% url 'emprestimo-renovar-self' e.id %}">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-primary" {% if not e.pode_renovar %}disabled title="Não elegível para renovação"{% endif %}>Renovar</button>

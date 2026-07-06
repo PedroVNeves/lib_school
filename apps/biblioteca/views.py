@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView, View
@@ -11,8 +11,18 @@ from apps.accounts.mixins import AdminBibliotecaRequiredMixin, AdminGeralRequire
 from apps.accounts.models import Usuario
 from apps.escolas.models import Vinculo
 
-from .forms import ConfiguracaoForm, EmprestimoCreateForm, ExemplarQuantidadeForm, LivroForm, TurmaForm
-from .models import AuditLog, Autor, Configuracao, Emprestimo, EmprestimoTurma, Exemplar, Genero, Livro, Turma
+from . import gamificacao
+from .forms import (
+    AvaliacaoForm,
+    ConfiguracaoForm,
+    EmprestimoCreateForm,
+    ExemplarQuantidadeForm,
+    LivroForm,
+    RegistroLeituraForm,
+    TurmaForm,
+)
+from .gamificacao import GamificacaoError
+from .models import AuditLog, Autor, Avaliacao, Configuracao, Emprestimo, EmprestimoTurma, Exemplar, Genero, Livro, Turma
 from .services import EmprestimoError, atualizar_status_atrasados, registrar_devolucao, registrar_emprestimo
 
 
@@ -23,7 +33,11 @@ class CatalogoListView(LoginRequiredMixin, ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        qs = Livro.objects.filter(escola=self.request.escola, ativo=True).prefetch_related('autores', 'generos')
+        qs = (
+            Livro.objects.filter(escola=self.request.escola, ativo=True)
+            .prefetch_related('autores', 'generos')
+            .annotate(nota_media=Avg('avaliacoes__nota'), qtd_avaliacoes=Count('avaliacoes'))
+        )
         busca = self.request.GET.get('q')
         genero = self.request.GET.get('genero')
         disponivel = self.request.GET.get('disponivel')
@@ -49,7 +63,79 @@ class LivroDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'livro'
 
     def get_queryset(self):
-        return Livro.objects.filter(escola=self.request.escola)
+        return Livro.objects.filter(escola=self.request.escola).annotate(
+            nota_media=Avg('avaliacoes__nota'), qtd_avaliacoes=Count('avaliacoes')
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        avaliacoes = self.object.avaliacoes.select_related('usuario').exclude(usuario=self.request.user)
+        minha_avaliacao = self.object.avaliacoes.filter(usuario=self.request.user).first()
+        ctx['avaliacoes'] = avaliacoes
+        ctx['minha_avaliacao'] = minha_avaliacao
+        ctx['avaliacao_form'] = AvaliacaoForm(instance=minha_avaliacao)
+        return ctx
+
+
+class AvaliacaoCreateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        livro = get_object_or_404(Livro, pk=pk, escola=request.escola)
+        form = AvaliacaoForm(request.POST)
+        if form.is_valid():
+            gamificacao.criar_ou_atualizar_avaliacao(
+                usuario=request.user, livro=livro,
+                nota=form.cleaned_data['nota'], comentario=form.cleaned_data['comentario'],
+            )
+            messages.success(request, 'Avaliação registrada com sucesso.')
+        else:
+            messages.error(request, 'Não foi possível salvar a avaliação — confira a nota informada.')
+        return redirect('livro-detail', pk=pk)
+
+
+class RegistrarProgressoView(LoginRequiredMixin, View):
+    def post(self, request, emprestimo_id):
+        emprestimo = get_object_or_404(Emprestimo, pk=emprestimo_id, escola=request.escola)
+        form = RegistroLeituraForm(request.POST)
+        if form.is_valid():
+            try:
+                gamificacao.registrar_progresso(
+                    emprestimo=emprestimo, usuario_solicitante=request.user,
+                    pagina_atual=form.cleaned_data['pagina_atual'],
+                )
+                messages.success(request, 'Progresso de leitura atualizado!')
+            except GamificacaoError as exc:
+                messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+        else:
+            messages.error(request, 'Informe uma página válida.')
+        return redirect('dashboard')
+
+
+class MarcarConcluidoView(LoginRequiredMixin, View):
+    def post(self, request, emprestimo_id):
+        emprestimo = get_object_or_404(Emprestimo, pk=emprestimo_id, escola=request.escola)
+        try:
+            gamificacao.marcar_livro_concluido(emprestimo=emprestimo, usuario_solicitante=request.user)
+            messages.success(request, f'Parabéns por terminar "{emprestimo.livro.titulo}"!')
+        except GamificacaoError as exc:
+            messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+        return redirect('dashboard')
+
+
+class RankingView(LoginRequiredMixin, TemplateView):
+    template_name = 'biblioteca/ranking.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        tipo = self.request.GET.get('tipo', 'paginas')
+        periodo = self.request.GET.get('periodo', 'total')
+        if tipo == 'livros':
+            ctx['ranking'] = gamificacao.ranking_livros(self.request.escola, periodo)
+        else:
+            tipo = 'paginas'
+            ctx['ranking'] = gamificacao.ranking_paginas(self.request.escola, periodo)
+        ctx['tipo'] = tipo
+        ctx['periodo'] = periodo
+        return ctx
 
 
 class LivroCreateView(AdminBibliotecaRequiredMixin, CreateView):

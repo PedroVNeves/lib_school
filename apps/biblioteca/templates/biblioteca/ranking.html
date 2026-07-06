@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-3">Ranking de Leitura</h1>
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <div class="btn-group">
+        <a class="btn btn-sm {% if tipo == 'paginas' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?tipo=paginas&periodo={{ periodo }}">Páginas lidas</a>
+        <a class="btn btn-sm {% if tipo == 'livros' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?tipo=livros&periodo={{ periodo }}">Livros concluídos</a>
+    </div>
+    <div class="btn-group">
+        <a class="btn btn-sm {% if periodo == 'total' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" href="?tipo={{ tipo }}&periodo=total">Total</a>
+        <a class="btn btn-sm {% if periodo == 'mensal' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" href="?tipo={{ tipo }}&periodo=mensal">Este mês</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+<table class="table table-hover-flat align-middle">
+    <thead><tr><th>#</th><th>Aluno</th><th>{% if tipo == 'livros' %}Livros concluídos{% else %}Páginas lidas{% endif %}</th></tr></thead>
+    <tbody>
+    {% for item in ranking %}
+        <tr {% if item.usuario_id == request.user.id %}class="table-hover-flat" style="background: var(--seq-100);"{% endif %}>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ item.usuario__first_name }} {{ item.usuario__last_name }}</td>
+            <td><strong>{{ item.total }}</strong></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3" class="text-muted">Ainda não há dados suficientes para este ranking.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

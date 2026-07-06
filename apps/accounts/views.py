@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, TemplateView, UpdateView, View
 
+from apps.biblioteca import gamificacao
 from apps.biblioteca.models import AuditLog, Emprestimo
 from apps.biblioteca.services import EmprestimoError, renovar_emprestimo
 from apps.escolas.models import Vinculo
@@ -312,9 +313,18 @@ class DashboardAlunoView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['emprestimos'] = Emprestimo.objects.filter(
-            usuario=self.request.user, escola=self.request.escola
-        ).select_related('livro')
+        emprestimos = list(
+            Emprestimo.objects.filter(usuario=self.request.user, escola=self.request.escola)
+            .select_related('livro')
+            .prefetch_related('registros_leitura')
+        )
+        for e in emprestimos:
+            ultimo = max(e.registros_leitura.all(), key=lambda r: r.pagina_atual, default=None)
+            e.pagina_atual_lida = ultimo.pagina_atual if ultimo else 0
+        ctx['emprestimos'] = emprestimos
+        total_paginas = gamificacao.total_paginas_lidas(self.request.escola, self.request.user)
+        ctx['nivel'] = gamificacao.calcular_nivel(total_paginas)
+        ctx['total_paginas_lidas'] = total_paginas
         return ctx
 
 

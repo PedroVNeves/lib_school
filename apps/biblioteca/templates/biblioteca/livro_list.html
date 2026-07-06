@@ -34,6 +34,9 @@
             <div class="card-body">
                 <h5 class="card-title"><a href="{% url 'livro-detail' livro.pk %}" class="text-decoration-none">{{ livro.titulo }}</a></h5>
                 <p class="card-text small text-muted">{% for a in livro.autores.all %}{{ a.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                {% if livro.nota_media %}
+                <p class="small text-warning mb-1">{% for i in "12345" %}{% if forloop.counter <= livro.nota_media|floatformat:0 %}★{% else %}☆{% endif %}{% endfor %} <span class="text-muted">({{ livro.qtd_avaliacoes }})</span></p>
+                {% endif %}
                 {% if livro.disponivel %}<span class="badge bg-success">Disponível ({{ livro.exemplares_disponiveis }})</span>
                 {% else %}<span class="badge bg-danger">Indisponível</span>{% endif %}
             </div>

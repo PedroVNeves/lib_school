@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Autor, Configuracao, Emprestimo, Exemplar, Genero, Livro, Turma
+from .models import Autor, Avaliacao, Configuracao, Emprestimo, Exemplar, Genero, Livro, Turma
 
 
 class LivroForm(forms.ModelForm):
@@ -52,6 +52,20 @@ class EmprestimoCreateForm(forms.Form):
     def __init__(self, *args, escola=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+
+
+class RegistroLeituraForm(forms.Form):
+    pagina_atual = forms.IntegerField(min_value=1, label='Página atual')
+
+
+class AvaliacaoForm(forms.ModelForm):
+    class Meta:
+        model = Avaliacao
+        fields = ['nota', 'comentario']
+        widgets = {
+            'nota': forms.Select(choices=[(i, f'{i} estrela{"s" if i > 1 else ""}') for i in range(1, 6)]),
+            'comentario': forms.Textarea(attrs={'rows': 3, 'placeholder': 'O que você achou do livro?'}),
+        }
 
 
 class ConfiguracaoForm(forms.ModelForm):

@@ -53,6 +53,7 @@
                     {% endif %}
                     {% if vinculo %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'livro-list' %}">Catálogo de Livros</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'ranking' %}">Ranking</a></li>
                     {% if vinculo.tipo == 'admin_geral' or vinculo.tipo == 'admin_biblioteca' %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'emprestimo-list' %}">Empréstimos</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'turma-list' %}">Turmas</a></li>

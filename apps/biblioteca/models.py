@@ -153,6 +153,8 @@ class Emprestimo(models.Model):
     )
     renovacoes_realizadas = models.IntegerField(default=0)
     observacoes = models.TextField(blank=True)
+    concluido = models.BooleanField(default=False)
+    concluido_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -244,6 +246,38 @@ class ItemEmprestimoTurma(models.Model):
 
     def __str__(self):
         return f'{self.livro} ({self.emprestimo_turma})'
+
+
+class RegistroLeitura(models.Model):
+    escola = models.ForeignKey('escolas.Escola', on_delete=models.CASCADE, related_name='registros_leitura')
+    emprestimo = models.ForeignKey(Emprestimo, on_delete=models.CASCADE, related_name='registros_leitura')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='registros_leitura')
+    pagina_atual = models.IntegerField()
+    paginas_incrementadas = models.IntegerField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.usuario} - {self.emprestimo.livro} (pág. {self.pagina_atual})'
+
+
+class Avaliacao(models.Model):
+    escola = models.ForeignKey('escolas.Escola', on_delete=models.CASCADE, related_name='avaliacoes')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='avaliacoes')
+    livro = models.ForeignKey(Livro, on_delete=models.CASCADE, related_name='avaliacoes')
+    nota = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    comentario = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['usuario', 'livro']
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'{self.usuario} avaliou {self.livro} ({self.nota}★)'
 
 
 class AuditLog(models.Model):

@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     AuditLog,
     Autor,
+    Avaliacao,
     Configuracao,
     Emprestimo,
     EmprestimoTurma,
@@ -10,6 +11,7 @@ from .models import (
     Genero,
     ItemEmprestimoTurma,
     Livro,
+    RegistroLeitura,
     Renovacao,
     Turma,
 )
@@ -33,6 +35,20 @@ class EmprestimoAdmin(admin.ModelAdmin):
     list_display = ['usuario', 'escola', 'livro', 'data_prevista_devolucao', 'status']
     list_filter = ['escola', 'status']
     search_fields = ['usuario__email', 'livro__titulo']
+
+
+@admin.register(Avaliacao)
+class AvaliacaoAdmin(admin.ModelAdmin):
+    list_display = ['usuario', 'livro', 'nota', 'criado_em']
+    list_filter = ['escola', 'nota']
+    search_fields = ['usuario__email', 'livro__titulo', 'comentario']
+
+
+@admin.register(RegistroLeitura)
+class RegistroLeituraAdmin(admin.ModelAdmin):
+    list_display = ['usuario', 'emprestimo', 'pagina_atual', 'paginas_incrementadas', 'criado_em']
+    list_filter = ['escola']
+    search_fields = ['usuario__email']
 
 
 admin.site.register(Turma)

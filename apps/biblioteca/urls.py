@@ -11,6 +11,12 @@ urlpatterns = [
     path('livros/<int:pk>/editar/', views.LivroUpdateView.as_view(), name='livro-update'),
     path('livros/<int:pk>/exemplares/', views.LivroAddExemplaresView.as_view(), name='livro-add-exemplares'),
     path('livros/<int:pk>/toggle/', views.LivroToggleAtivoView.as_view(), name='livro-toggle'),
+    path('livros/<int:pk>/avaliar/', views.AvaliacaoCreateView.as_view(), name='avaliacao-criar'),
+
+    path('leitura/<int:emprestimo_id>/registrar/', views.RegistrarProgressoView.as_view(), name='leitura-registrar'),
+    path('leitura/<int:emprestimo_id>/concluir/', views.MarcarConcluidoView.as_view(), name='leitura-concluir'),
+
+    path('ranking/', views.RankingView.as_view(), name='ranking'),
 
     path('autores/', views.AutorListView.as_view(), name='autor-list'),
     path('generos/', views.GeneroListView.as_view(), name='genero-list'),
