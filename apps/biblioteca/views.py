@@ -16,14 +16,35 @@ from .forms import (
     AvaliacaoForm,
     ConfiguracaoForm,
     EmprestimoCreateForm,
+    EmprestimoIndividualProfessorForm,
+    EmprestimoTurmaCreateForm,
     ExemplarQuantidadeForm,
     LivroForm,
     RegistroLeituraForm,
     TurmaForm,
 )
 from .gamificacao import GamificacaoError
-from .models import AuditLog, Autor, Avaliacao, Configuracao, Emprestimo, EmprestimoTurma, Exemplar, Genero, Livro, Turma
-from .services import EmprestimoError, atualizar_status_atrasados, registrar_devolucao, registrar_emprestimo
+from .models import (
+    AuditLog,
+    Autor,
+    Avaliacao,
+    Configuracao,
+    Emprestimo,
+    EmprestimoTurma,
+    Exemplar,
+    Genero,
+    ItemEmprestimoTurma,
+    Livro,
+    Turma,
+)
+from .services import (
+    EmprestimoError,
+    atualizar_status_atrasados,
+    devolver_item_emprestimo_turma,
+    registrar_devolucao,
+    registrar_emprestimo,
+    registrar_emprestimo_turma,
+)
 
 
 class CatalogoListView(LoginRequiredMixin, ListView):
@@ -421,3 +442,100 @@ class AuditLogListView(AdminGeralRequiredMixin, ListView):
 
     def get_queryset(self):
         return AuditLog.objects.filter(escola=self.request.escola).select_related('usuario')
+
+
+class ProfessorRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and (
+            request.vinculo is None or request.vinculo.tipo != Vinculo.TIPO_PROFESSOR
+        ):
+            messages.error(request, 'Acesso restrito a professores.')
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class EmprestimoProfessorCreateView(ProfessorRequiredMixin, View):
+    template_name = 'biblioteca/emprestimo_professor_form.html'
+
+    def get(self, request):
+        perfil = getattr(request.vinculo, 'perfil_professor', None)
+        turmas = perfil.turmas.all() if perfil else Turma.objects.none()
+        return render(request, self.template_name, {
+            'form_individual': EmprestimoIndividualProfessorForm(escola=request.escola),
+            'form_turma': EmprestimoTurmaCreateForm(escola=request.escola, turmas=turmas),
+        })
+
+
+class EmprestimoIndividualProfessorView(ProfessorRequiredMixin, View):
+    def post(self, request):
+        form = EmprestimoIndividualProfessorForm(request.POST, escola=request.escola)
+        if form.is_valid():
+            try:
+                emprestimo = registrar_emprestimo(
+                    vinculo=request.vinculo, livro=form.cleaned_data['livro'], registrado_por=request.user
+                )
+                messages.success(
+                    request,
+                    f'Empréstimo registrado. Devolução prevista: {emprestimo.data_prevista_devolucao:%d/%m/%Y}.',
+                )
+                return redirect('dashboard')
+            except EmprestimoError as exc:
+                messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+        else:
+            messages.error(request, 'Selecione um livro válido.')
+        return redirect('emprestimo-professor-novo')
+
+
+class EmprestimoTurmaCreateView(ProfessorRequiredMixin, View):
+    template_name = 'biblioteca/emprestimo_professor_form.html'
+
+    def post(self, request):
+        perfil = getattr(request.vinculo, 'perfil_professor', None)
+        turmas = perfil.turmas.all() if perfil else Turma.objects.none()
+        form = EmprestimoTurmaCreateForm(request.POST, escola=request.escola, turmas=turmas)
+        if form.is_valid():
+            try:
+                emprestimo_turma = registrar_emprestimo_turma(
+                    vinculo=request.vinculo,
+                    turma=form.cleaned_data['turma'],
+                    itens=form.itens_selecionados(),
+                    data_prevista_devolucao=form.cleaned_data['data_prevista_devolucao'],
+                    registrado_por=request.user,
+                )
+                messages.success(request, 'Empréstimo de turma registrado com sucesso.')
+                return redirect('emprestimo-turma-detail', pk=emprestimo_turma.pk)
+            except EmprestimoError as exc:
+                messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+        else:
+            messages.error(request, 'Confira os dados do formulário de turma.')
+        return render(request, self.template_name, {
+            'form_individual': EmprestimoIndividualProfessorForm(escola=request.escola),
+            'form_turma': form,
+        })
+
+
+class EmprestimoTurmaDetailView(LoginRequiredMixin, DetailView):
+    model = EmprestimoTurma
+    template_name = 'biblioteca/emprestimo_turma_detail.html'
+    context_object_name = 'emprestimo_turma'
+
+    def get_queryset(self):
+        return EmprestimoTurma.objects.filter(escola=self.request.escola).select_related('turma', 'professor_responsavel')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['itens'] = self.object.itens.select_related('livro', 'exemplar')
+        return ctx
+
+
+class ItemEmprestimoTurmaDevolverView(LoginRequiredMixin, View):
+    def post(self, request, pk, item_id):
+        item = get_object_or_404(
+            ItemEmprestimoTurma, pk=item_id, emprestimo_turma_id=pk, emprestimo_turma__escola=request.escola
+        )
+        try:
+            devolver_item_emprestimo_turma(item=item, registrado_por=request.user)
+            messages.success(request, f'Devolução de "{item.livro.titulo}" registrada.')
+        except EmprestimoError as exc:
+            messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+        return redirect('emprestimo-turma-detail', pk=pk)

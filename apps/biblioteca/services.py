@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 
 from apps.escolas.models import Vinculo
 
-from .models import AuditLog, Configuracao, Emprestimo, Exemplar, Renovacao
+from .models import AuditLog, Configuracao, Emprestimo, EmprestimoTurma, Exemplar, ItemEmprestimoTurma, Renovacao
 
 
 class EmprestimoError(ValidationError):
@@ -134,6 +134,97 @@ def renovar_emprestimo(*, emprestimo, usuario_solicitante):
         emprestimo.status = Emprestimo.STATUS_ATIVO
     emprestimo.save(update_fields=['data_prevista_devolucao', 'renovacoes_realizadas', 'status', 'atualizado_em'])
     return emprestimo
+
+
+def registrar_emprestimo_turma(*, vinculo, turma, itens, data_prevista_devolucao, registrado_por):
+    if vinculo.escola_id != turma.escola_id:
+        raise EmprestimoError('Turma e professor pertencem a escolas diferentes.')
+
+    professor = vinculo.usuario
+
+    em_atraso_pessoal = Emprestimo.objects.filter(
+        usuario=professor, escola=turma.escola, status=Emprestimo.STATUS_ATRASADO
+    ).exists()
+    if em_atraso_pessoal:
+        raise EmprestimoError('Você possui empréstimos pessoais em atraso. Regularize antes de um novo empréstimo.')
+
+    turma_atrasada = EmprestimoTurma.objects.filter(
+        professor_responsavel=professor, escola=turma.escola, devolvido=False, data_prevista_devolucao__lt=date.today()
+    ).exists()
+    if turma_atrasada:
+        raise EmprestimoError('Você possui um empréstimo de turma em atraso. Regularize antes de um novo empréstimo.')
+
+    if not itens:
+        raise EmprestimoError('Selecione ao menos um livro para o empréstimo de turma.')
+
+    reservas = []
+    for livro, quantidade in itens:
+        if livro.escola_id != turma.escola_id:
+            raise EmprestimoError(f'"{livro.titulo}" pertence a outra escola.')
+        exemplares = list(livro.exemplares.filter(status='disponivel')[:quantidade])
+        if len(exemplares) < quantidade:
+            raise EmprestimoError(
+                f'"{livro.titulo}" só tem {len(exemplares)} exemplar(es) disponível(is), '
+                f'mas foram pedidos {quantidade}.'
+            )
+        reservas.append((livro, exemplares))
+
+    emprestimo_turma = EmprestimoTurma.objects.create(
+        escola=turma.escola,
+        turma=turma,
+        professor_responsavel=professor,
+        data_prevista_devolucao=data_prevista_devolucao,
+        registrado_por=registrado_por,
+    )
+
+    for livro, exemplares in reservas:
+        for exemplar in exemplares:
+            ItemEmprestimoTurma.objects.create(emprestimo_turma=emprestimo_turma, livro=livro, exemplar=exemplar)
+            exemplar.status = 'emprestado'
+            exemplar.save(update_fields=['status'])
+        livro.exemplares_disponiveis = livro.exemplares.filter(status='disponivel').count()
+        livro.save(update_fields=['exemplares_disponiveis'])
+
+    AuditLog.objects.create(
+        escola=turma.escola,
+        usuario=registrado_por,
+        acao=f'Registrou empréstimo de turma #{emprestimo_turma.id} para {turma}',
+        modelo='EmprestimoTurma',
+        objeto_id=emprestimo_turma.id,
+    )
+    return emprestimo_turma
+
+
+def devolver_item_emprestimo_turma(*, item, registrado_por):
+    if item.devolvido:
+        raise EmprestimoError('Este exemplar já foi devolvido.')
+
+    item.devolvido = True
+    item.data_devolucao = date.today()
+    item.save(update_fields=['devolvido', 'data_devolucao'])
+
+    exemplar = item.exemplar
+    exemplar.status = 'disponivel'
+    exemplar.save(update_fields=['status'])
+
+    livro = item.livro
+    livro.exemplares_disponiveis = livro.exemplares.filter(status='disponivel').count()
+    livro.save(update_fields=['exemplares_disponiveis'])
+
+    emprestimo_turma = item.emprestimo_turma
+    if not emprestimo_turma.itens.filter(devolvido=False).exists():
+        emprestimo_turma.devolvido = True
+        emprestimo_turma.data_real_devolucao = date.today()
+        emprestimo_turma.save(update_fields=['devolvido', 'data_real_devolucao'])
+
+    AuditLog.objects.create(
+        escola=item.emprestimo_turma.escola,
+        usuario=registrado_por,
+        acao=f'Registrou devolução de "{livro.titulo}" do empréstimo de turma #{emprestimo_turma.id}',
+        modelo='ItemEmprestimoTurma',
+        objeto_id=item.id,
+    )
+    return item
 
 
 def atualizar_status_atrasados(escola=None):

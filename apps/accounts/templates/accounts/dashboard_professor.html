@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="h3 mb-4">Meus Empréstimos</h1>
-{% if turmas %}
-<p>Turmas: {% for t in turmas %}<span class="badge bg-secondary">{{ t.codigo }}</span> {% endfor %}</p>
-{% endif %}
-<div class="table-responsive">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Meus Empréstimos</h1>
+    <a href="{% url 'emprestimo-professor-novo' %}" class="btn btn-primary">+ Alugar livro</a>
+</div>
+<div class="table-responsive mb-5">
 <table class="table table-hover-flat align-middle">
     <thead><tr><th>Livro</th><th>Devolução prevista</th><th>Progresso</th><th>Status</th><th>Renovações</th><th></th></tr></thead>
     <tbody>
@@ -39,4 +39,58 @@
     </tbody>
 </table>
 </div>
+
+<h2 class="h4 mb-3">Minhas Turmas</h2>
+{% for turma in turmas %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h3 class="h5 mb-3">{{ turma.codigo }} <span class="text-muted small">({{ turma.get_nivel_display }} · {{ turma.get_turno_display }})</span></h3>
+
+        <h4 class="h6 text-muted">Alunos</h4>
+        <div class="table-responsive mb-3">
+        <table class="table table-sm table-hover-flat">
+            <thead><tr><th>Nome</th><th>Matrícula</th><th>Empréstimo</th></tr></thead>
+            <tbody>
+            {% for aluno in turma.alunos_com_status %}
+                <tr>
+                    <td>{{ aluno.vinculo.usuario.get_full_name }}</td>
+                    <td>{{ aluno.matricula }}</td>
+                    <td>
+                        {% if aluno.emprestimo_atual %}
+                            {{ aluno.emprestimo_atual.livro.titulo }}
+                            {% if aluno.emprestimo_atual.dias_atraso > 0 %}<span class="badge bg-danger">Atrasado</span>
+                            {% else %}<span class="badge bg-success">Em dia</span>{% endif %}
+                        {% else %}
+                            <span class="text-muted small">Sem empréstimo ativo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3" class="text-muted small">Nenhum aluno nesta turma.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <h4 class="h6 text-muted">Empréstimos de turma recentes</h4>
+        {% for et in turma.historico_emprestimos_turma %}
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <div>
+                <a href="{% url 'emprestimo-turma-detail' et.pk %}">Empréstimo #{{ et.pk }}</a>
+                <span class="text-muted small">— {{ et.itens.count }} livro{{ et.itens.count|pluralize }}, prof. {{ et.professor_responsavel.get_full_name }}</span>
+            </div>
+            <div>
+                {% if et.devolvido %}<span class="badge bg-secondary">Devolvido</span>
+                {% elif et.atrasado %}<span class="badge bg-danger">Atrasado</span>
+                {% else %}<span class="badge bg-success">Em dia</span>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small">Nenhum empréstimo de turma ainda.</p>
+        {% endfor %}
+    </div>
+</div>
+{% empty %}
+<p class="text-muted">Você ainda não está vinculado a nenhuma turma.</p>
+{% endfor %}
 {% endblock %}

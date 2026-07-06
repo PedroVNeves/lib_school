@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-1">Empréstimo de Turma #{{ emprestimo_turma.pk }}</h1>
+<p class="text-muted">
+    Turma {{ emprestimo_turma.turma.codigo }} · Responsável: {{ emprestimo_turma.professor_responsavel.get_full_name }}
+    · Devolução prevista: {{ emprestimo_turma.data_prevista_devolucao|date:"d/m/Y" }}
+    {% if emprestimo_turma.devolvido %}<span class="badge bg-secondary">Devolvido</span>
+    {% elif emprestimo_turma.atrasado %}<span class="badge bg-danger">Atrasado</span>
+    {% else %}<span class="badge bg-success">Em dia</span>{% endif %}
+</p>
+
+<div class="table-responsive">
+<table class="table">
+    <thead><tr><th>Livro</th><th>Exemplar</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for item in itens %}
+        <tr>
+            <td>{{ item.livro.titulo }}</td>
+            <td>{{ item.exemplar.codigo_tombamento }}</td>
+            <td>
+                {% if item.devolvido %}<span class="badge bg-secondary">Devolvido em {{ item.data_devolucao|date:"d/m/Y" }}</span>
+                {% else %}<span class="badge bg-success">Com a turma</span>{% endif %}
+            </td>
+            <td>
+                {% if not item.devolvido %}
+                <form method="post" action="{% url 'item-emprestimo-turma-devolver' emprestimo_turma.pk item.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-primary">Devolver</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">Nenhum item neste empréstimo.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+<a href="{% url 'dashboard' %}">&larr; Voltar ao painel</a>
+{% endblock %}

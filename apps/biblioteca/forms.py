@@ -1,6 +1,10 @@
+from datetime import date
+
 from django import forms
 
 from .models import Autor, Avaliacao, Configuracao, Emprestimo, Exemplar, Genero, Livro, Turma
+
+NUM_LINHAS_EMPRESTIMO_TURMA = 6
 
 
 class LivroForm(forms.ModelForm):
@@ -52,6 +56,40 @@ class EmprestimoCreateForm(forms.Form):
     def __init__(self, *args, escola=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+
+
+class EmprestimoIndividualProfessorForm(forms.Form):
+    livro = forms.ModelChoiceField(queryset=Livro.objects.none(), label='Livro')
+
+    def __init__(self, *args, escola=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+
+
+class EmprestimoTurmaCreateForm(forms.Form):
+    turma = forms.ModelChoiceField(queryset=Turma.objects.none(), label='Turma')
+    data_prevista_devolucao = forms.DateField(
+        label='Data de devolução', initial=date.today, widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+    def __init__(self, *args, escola=None, turmas=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['turma'].queryset = turmas if turmas is not None else Turma.objects.none()
+        livros_qs = Livro.objects.filter(escola=escola, ativo=True)
+        for i in range(1, NUM_LINHAS_EMPRESTIMO_TURMA + 1):
+            self.fields[f'livro_{i}'] = forms.ModelChoiceField(queryset=livros_qs, required=False, label=f'Livro {i}')
+            self.fields[f'quantidade_{i}'] = forms.IntegerField(
+                required=False, min_value=1, initial=1, label='Quantidade'
+            )
+
+    def itens_selecionados(self):
+        itens = []
+        for i in range(1, NUM_LINHAS_EMPRESTIMO_TURMA + 1):
+            livro = self.cleaned_data.get(f'livro_{i}')
+            quantidade = self.cleaned_data.get(f'quantidade_{i}')
+            if livro and quantidade:
+                itens.append((livro, quantidade))
+        return itens
 
 
 class RegistroLeituraForm(forms.Form):

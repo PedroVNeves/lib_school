@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h1 class="h3 mb-4">Alugar Livro</h1>
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Para mim</h2>
+                <form method="post" action="{% url 'emprestimo-professor-individual' %}">
+                    {% csrf_token %}
+                    {{ form_individual|crispy }}
+                    <button type="submit" class="btn btn-primary">Alugar para mim</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Para a turma</h2>
+                <p class="text-muted small">Escolha até 6 títulos diferentes — normalmente devolvidos no mesmo dia.</p>
+                <form method="post" action="{% url 'emprestimo-turma-create' %}">
+                    {% csrf_token %}
+                    {{ form_turma|crispy }}
+                    <button type="submit" class="btn btn-primary">Alugar para a turma</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

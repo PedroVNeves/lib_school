@@ -9,7 +9,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, TemplateView, UpdateView, View
 
 from apps.biblioteca import gamificacao
-from apps.biblioteca.models import AuditLog, Emprestimo
+from apps.biblioteca.models import AuditLog, Emprestimo, EmprestimoTurma
 from apps.biblioteca.services import EmprestimoError, renovar_emprestimo
 from apps.escolas.models import Vinculo
 
@@ -296,7 +296,29 @@ class DashboardProfessorView(LoginRequiredMixin, TemplateView):
             usuario=self.request.user, escola=self.request.escola
         ).select_related('livro')
         perfil = getattr(self.request.vinculo, 'perfil_professor', None)
-        ctx['turmas'] = perfil.turmas.all() if perfil else []
+        turmas = list(perfil.turmas.all()) if perfil else []
+
+        emprestimos_ativos_por_usuario = {
+            e.usuario_id: e
+            for e in Emprestimo.objects.filter(
+                escola=self.request.escola, status__in=['ativo', 'atrasado']
+            ).select_related('livro')
+        }
+        for turma in turmas:
+            alunos = list(
+                PerfilAluno.objects.filter(turma=turma, vinculo__escola=self.request.escola)
+                .select_related('vinculo__usuario')
+            )
+            for aluno in alunos:
+                aluno.emprestimo_atual = emprestimos_ativos_por_usuario.get(aluno.vinculo.usuario_id)
+            turma.alunos_com_status = alunos
+            turma.historico_emprestimos_turma = list(
+                EmprestimoTurma.objects.filter(turma=turma, escola=self.request.escola)
+                .select_related('professor_responsavel')
+                .prefetch_related('itens__livro')[:10]
+            )
+
+        ctx['turmas'] = turmas
         return ctx
 
 

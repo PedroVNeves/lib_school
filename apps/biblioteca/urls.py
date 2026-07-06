@@ -29,6 +29,20 @@ urlpatterns = [
     path('emprestimos/novo/', views.EmprestimoCreateView.as_view(), name='emprestimo-create'),
     path('emprestimos/<int:pk>/devolver/', views.EmprestimoDevolverView.as_view(), name='emprestimo-devolver'),
 
+    path('emprestimos/professor/novo/', views.EmprestimoProfessorCreateView.as_view(), name='emprestimo-professor-novo'),
+    path(
+        'emprestimos/professor/individual/',
+        views.EmprestimoIndividualProfessorView.as_view(),
+        name='emprestimo-professor-individual',
+    ),
+    path('emprestimos-turma/novo/', views.EmprestimoTurmaCreateView.as_view(), name='emprestimo-turma-create'),
+    path('emprestimos-turma/<int:pk>/', views.EmprestimoTurmaDetailView.as_view(), name='emprestimo-turma-detail'),
+    path(
+        'emprestimos-turma/<int:pk>/itens/<int:item_id>/devolver/',
+        views.ItemEmprestimoTurmaDevolverView.as_view(),
+        name='item-emprestimo-turma-devolver',
+    ),
+
     path('configuracoes/', views.ConfiguracaoView.as_view(), name='configuracoes'),
     path('logs/', views.AuditLogListView.as_view(), name='auditlog-list'),
 ]

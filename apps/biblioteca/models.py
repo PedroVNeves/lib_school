@@ -236,6 +236,10 @@ class EmprestimoTurma(models.Model):
     def __str__(self):
         return f'Empréstimo de turma {self.turma} - {self.data_saida:%d/%m/%Y}'
 
+    @property
+    def atrasado(self):
+        return not self.devolvido and date.today() > self.data_prevista_devolucao
+
 
 class ItemEmprestimoTurma(models.Model):
     emprestimo_turma = models.ForeignKey(EmprestimoTurma, on_delete=models.CASCADE, related_name='itens')
