@@ -23,10 +23,12 @@
             </td>
             <td>
                 {% if not item.devolvido %}
-                <form method="post" action="{% url 'item-emprestimo-turma-devolver' emprestimo_turma.pk item.pk %}">
-                    {% csrf_token %}
-                    <button class="btn btn-sm btn-outline-primary">Devolver</button>
-                </form>
+                    {% if vinculo.tipo == 'admin_geral' or vinculo.tipo == 'admin_biblioteca' %}
+                    <form method="post" action="{% url 'item-emprestimo-turma-devolver' emprestimo_turma.pk item.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline-primary">Devolver</button>
+                    </form>
+                    {% endif %}
                 {% endif %}
             </td>
         </tr>

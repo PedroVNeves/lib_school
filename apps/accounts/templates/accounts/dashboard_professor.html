@@ -1,9 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0">Meus Empréstimos</h1>
-    <a href="{% url 'emprestimo-professor-novo' %}" class="btn btn-primary">+ Alugar livro</a>
-</div>
+<h1 class="h3 mb-4">Meus Empréstimos</h1>
 <div class="table-responsive mb-5">
 <table class="table table-hover-flat align-middle">
     <thead><tr><th>Livro</th><th>Devolução prevista</th><th>Progresso</th><th>Status</th><th>Renovações</th><th></th></tr></thead>

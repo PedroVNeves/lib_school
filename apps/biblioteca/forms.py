@@ -2,6 +2,8 @@ from datetime import date
 
 from django import forms
 
+from apps.escolas.models import Vinculo
+
 from .models import Autor, Avaliacao, Configuracao, Emprestimo, Exemplar, Genero, Livro, Turma
 
 NUM_LINHAS_EMPRESTIMO_TURMA = 6
@@ -58,23 +60,24 @@ class EmprestimoCreateForm(forms.Form):
         self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
 
 
-class EmprestimoIndividualProfessorForm(forms.Form):
-    livro = forms.ModelChoiceField(queryset=Livro.objects.none(), label='Livro')
-
-    def __init__(self, *args, escola=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+class VinculoProfessorChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.usuario.get_full_name() or obj.usuario.email
 
 
 class EmprestimoTurmaCreateForm(forms.Form):
     turma = forms.ModelChoiceField(queryset=Turma.objects.none(), label='Turma')
+    professor_responsavel = VinculoProfessorChoiceField(queryset=Vinculo.objects.none(), label='Professor responsável')
     data_prevista_devolucao = forms.DateField(
         label='Data de devolução', initial=date.today, widget=forms.DateInput(attrs={'type': 'date'})
     )
 
-    def __init__(self, *args, escola=None, turmas=None, **kwargs):
+    def __init__(self, *args, escola=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['turma'].queryset = turmas if turmas is not None else Turma.objects.none()
+        self.fields['turma'].queryset = Turma.objects.filter(escola=escola, ativa=True)
+        self.fields['professor_responsavel'].queryset = (
+            Vinculo.objects.filter(escola=escola, tipo=Vinculo.TIPO_PROFESSOR, ativo=True).select_related('usuario')
+        )
         livros_qs = Livro.objects.filter(escola=escola, ativo=True)
         for i in range(1, NUM_LINHAS_EMPRESTIMO_TURMA + 1):
             self.fields[f'livro_{i}'] = forms.ModelChoiceField(queryset=livros_qs, required=False, label=f'Livro {i}')

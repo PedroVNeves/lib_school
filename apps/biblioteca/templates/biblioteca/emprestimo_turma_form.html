@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h1 class="h3 mb-4">Novo Empréstimo de Turma</h1>
+<p class="text-muted small">Escolha a turma, o professor responsável e até 6 títulos diferentes — geralmente devolvidos no mesmo dia.</p>
+<div class="card border-0 shadow-sm" style="max-width: 700px;">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <button type="submit" class="btn btn-primary">Registrar Empréstimo de Turma</button>
+            <a href="{% url 'emprestimo-list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
