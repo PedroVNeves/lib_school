@@ -12,6 +12,7 @@
         <option value="devolvido" {% if request.GET.status == 'devolvido' %}selected{% endif %}>Devolvido</option>
     </select>
 </form>
+<div class="table-responsive">
 <table class="table">
     <thead><tr><th>Usuário</th><th>Livro</th><th>Devolução prevista</th><th>Status</th><th></th></tr></thead>
     <tbody>
@@ -39,4 +40,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

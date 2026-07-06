@@ -4,6 +4,7 @@
     <h1 class="h3">Escolas</h1>
     <a class="btn btn-primary" href="{% url 'escola-create' %}">+ Nova Escola</a>
 </div>
+<div class="table-responsive">
 <table class="table">
     <thead><tr><th>Nome</th><th>Alunos</th><th>Professores</th><th>Livros</th><th>Status</th><th></th></tr></thead>
     <tbody>
@@ -29,4 +30,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

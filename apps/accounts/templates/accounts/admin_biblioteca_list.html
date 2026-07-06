@@ -4,6 +4,7 @@
     <h1 class="h3">Responsáveis pela Biblioteca</h1>
     <a class="btn btn-primary" href="{% url 'admin-biblioteca-create' %}">+ Novo Responsável</a>
 </div>
+<div class="table-responsive">
 <table class="table">
     <thead><tr><th>Nome</th><th>Registro Funcional</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
     <tbody>
@@ -25,4 +26,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1 class="h3 mb-3">Logs de Auditoria</h1>
+<div class="table-responsive">
 <table class="table table-sm">
     <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Modelo</th></tr></thead>
     <tbody>
@@ -11,4 +12,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

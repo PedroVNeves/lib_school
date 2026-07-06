@@ -4,6 +4,7 @@
 {% if turmas %}
 <p>Turmas: {% for t in turmas %}<span class="badge bg-secondary">{{ t.codigo }}</span> {% endfor %}</p>
 {% endif %}
+<div class="table-responsive">
 <table class="table table-hover-flat align-middle">
     <thead><tr><th>Livro</th><th>Devolução prevista</th><th>Progresso</th><th>Status</th><th>Renovações</th><th></th></tr></thead>
     <tbody>
@@ -37,4 +38,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}
