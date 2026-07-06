@@ -4,6 +4,7 @@ __pycache__/
 db.sqlite3
 .env
 CREDENCIAIS_TESTE.txt
+CREDENCIAIS_PRODUCAO.txt
 media/
 !media/.gitkeep
 staticfiles/
