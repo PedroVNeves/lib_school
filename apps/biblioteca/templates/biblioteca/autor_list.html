@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-3">Autores</h1>
+<ul class="list-group">
+{% for autor in autores %}<li class="list-group-item">{{ autor.nome }} {% if autor.nacionalidade %}({{ autor.nacionalidade }}){% endif %}</li>{% empty %}<li class="list-group-item">Nenhum autor cadastrado.</li>{% endfor %}
+</ul>
+{% endblock %}

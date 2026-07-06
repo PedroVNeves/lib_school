@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Painel — Biblioteca</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: var(--seq-100); color: var(--series-1);">📖</div>
+            <div>
+                <div class="stat-label">Títulos no acervo</div>
+                <div class="stat-value">{{ total_titulos }}</div>
+                <div class="stat-delta">{{ total_exemplares }} exemplares no total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: #e3f4ec; color: var(--status-good);">✅</div>
+            <div>
+                <div class="stat-label">Empréstimos ativos</div>
+                <div class="stat-value">{{ emprestimos_ativos }}</div>
+                <div class="stat-delta">em circulação agora</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: #fbe9e7; color: var(--status-critical);">⚠️</div>
+            <div>
+                <div class="stat-label">Em atraso</div>
+                <div class="stat-value">{{ emprestimos_atrasados }}</div>
+                <div class="stat-delta {% if emprestimos_atrasados > 0 %}bad{% endif %}">precisam de atenção</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: #fdf1da; color: #a97300;">↩️</div>
+            <div>
+                <div class="stat-label">Devoluções</div>
+                <div class="stat-value">{{ devolucoes_hoje }}</div>
+                <div class="stat-delta">hoje · {{ devolucoes_semana }} nos últimos 7 dias</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><a class="btn btn-outline-primary w-100" href="{% url 'livro-create' %}">+ Novo Livro</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-primary w-100" href="{% url 'emprestimo-create' %}">+ Novo Empréstimo</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-secondary w-100" href="{% url 'emprestimo-list' %}">Ver Empréstimos</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-secondary w-100" href="{% url 'turma-create' %}">+ Nova Turma</a></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="chart-card">
+            <h2>Empréstimos por mês (últimos 12 meses)</h2>
+            <div class="chart-wrap" style="height: 260px;">
+                <canvas id="chartMeses"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card">
+            <h2>Top gêneros emprestados</h2>
+            <div class="chart-wrap" style="height: 260px;">
+                <canvas id="chartGeneros"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h2>Top 10 livros mais emprestados</h2>
+            <div class="chart-wrap" style="height: 320px;">
+                <canvas id="chartLivros"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="chart-card">
+            <h2>Top turmas</h2>
+            <div class="chart-wrap" style="height: 320px;">
+                <canvas id="chartTurmas"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="chart-card">
+            <h2>Leitores mais ativos</h2>
+            <ol class="ps-3 mb-0">
+            {% for u in top_usuarios %}
+                <li class="mb-1">{{ u.get_full_name }} <span class="text-muted small">({{ u.qtd }})</span></li>
+            {% empty %}
+                <li class="text-muted">Sem dados ainda.</li>
+            {% endfor %}
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const inkSecondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+const gridline = getComputedStyle(document.documentElement).getPropertyValue('--gridline').trim();
+Chart.defaults.color = inkSecondary;
+Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+Chart.defaults.borderColor = gridline;
+
+new Chart(document.getElementById('chartMeses'), {
+    type: 'line',
+    data: {
+        labels: {{ chart_meses|safe }},
+        datasets: [{
+            label: 'Empréstimos',
+            data: {{ chart_meses_valores|safe }},
+            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--seq-100').trim(),
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
+            borderWidth: 2,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, x: { grid: { display: false } } }
+    }
+});
+
+new Chart(document.getElementById('chartGeneros'), {
+    type: 'bar',
+    data: {
+        labels: {{ chart_generos_labels|safe }},
+        datasets: [{
+            data: {{ chart_generos_valores|safe }},
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
+            borderRadius: 4,
+            maxBarThickness: 24,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, y: { grid: { display: false } } }
+    }
+});
+
+new Chart(document.getElementById('chartLivros'), {
+    type: 'bar',
+    data: {
+        labels: {{ chart_livros_labels|safe }},
+        datasets: [{
+            data: {{ chart_livros_valores|safe }},
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
+            borderRadius: 4,
+            maxBarThickness: 20,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, y: { grid: { display: false } } }
+    }
+});
+
+new Chart(document.getElementById('chartTurmas'), {
+    type: 'bar',
+    data: {
+        labels: {{ chart_turmas_labels|safe }},
+        datasets: [{
+            data: {{ chart_turmas_valores|safe }},
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-2').trim(),
+            borderRadius: 4,
+            maxBarThickness: 24,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, x: { grid: { display: false } } }
+    }
+});
+</script>
+{% endblock %}

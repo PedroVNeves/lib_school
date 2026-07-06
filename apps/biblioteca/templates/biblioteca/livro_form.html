@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h1 class="h3 mb-3">{% if form.instance.pk %}Editar Livro{% else %}Novo Livro{% endif %}</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form|crispy }}
+    {% if not form.instance.pk %}
+    <div class="mb-3">
+        <label class="form-label">Quantidade de exemplares iniciais</label>
+        <input type="number" name="exemplares_iniciais" min="1" value="1" class="form-control" style="max-width:150px;">
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{% url 'livro-list' %}" class="btn btn-outline-secondary">Cancelar</a>
+</form>
+{% endblock %}

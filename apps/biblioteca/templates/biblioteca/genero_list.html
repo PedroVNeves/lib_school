@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-3">Gêneros</h1>
+<ul class="list-group">
+{% for genero in generos %}<li class="list-group-item">{{ genero.nome }}</li>{% empty %}<li class="list-group-item">Nenhum gênero cadastrado.</li>{% endfor %}
+</ul>
+{% endblock %}

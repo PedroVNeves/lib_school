@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+CREDENCIAIS_TESTE.txt
+media/
+!media/.gitkeep
+staticfiles/
+*.log
+.DS_Store

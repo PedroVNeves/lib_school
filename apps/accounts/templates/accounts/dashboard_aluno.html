@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-4">Meus Empréstimos</h1>
+<div class="row g-3">
+    {% for e in emprestimos %}
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="book-cover" style="background: {% if e.severidade == 'critical' %}var(--status-critical){% elif e.severidade == 'warning' %}var(--status-warning){% elif e.severidade == 'done' %}var(--text-muted){% else %}var(--series-1){% endif %};">
+                {{ e.livro.titulo|slice:":1" }}
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ e.livro.titulo }}</h5>
+                <p class="card-text mb-1 small text-muted">Devolução prevista: {{ e.data_prevista_devolucao|date:"d/m/Y" }}</p>
+                <p class="mb-2">
+                {% if e.status == 'devolvido' %}<span class="badge bg-secondary">Devolvido</span>
+                {% elif e.dias_atraso > 0 %}<span class="badge bg-danger">Atrasado ({{ e.dias_atraso }} dia{{ e.dias_atraso|pluralize }})</span>
+                {% elif e.dias_restantes <= 3 %}<span class="badge bg-warning text-dark">Vence em {{ e.dias_restantes }} dia{{ e.dias_restantes|pluralize }}</span>
+                {% else %}<span class="badge bg-success">Em dia · {{ e.dias_restantes }}d restantes</span>{% endif %}
+                </p>
+                {% if e.status != 'devolvido' %}
+                <div class="meter-track mb-2">
+                    <div class="meter-fill {{ e.severidade }}" style="width: {{ e.progresso_pct }}%;"></div>
+                </div>
+                {% endif %}
+                <p class="small text-muted mb-2">Renovações: {{ e.renovacoes_realizadas }}</p>
+                {% if e.status != 'devolvido' %}
+                <form method="post" action="{% url 'emprestimo-renovar-self' e.id %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-primary" {% if not e.pode_renovar %}disabled title="Não elegível para renovação"{% endif %}>Renovar</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p>Nenhum empréstimo registrado ainda.</p>
+    {% endfor %}
+</div>
+{% endblock %}

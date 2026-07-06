@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mx-auto" style="max-width: 480px;">
+    <h1 class="h3 mb-3">Escolha a escola</h1>
+    <p class="text-secondary">Você tem acesso a mais de uma escola. Selecione com qual deseja entrar.</p>
+    <div class="list-group">
+        {% for vinculo in vinculos %}
+        <form method="post" class="list-group-item p-0">
+            {% csrf_token %}
+            <input type="hidden" name="vinculo_id" value="{{ vinculo.id }}">
+            <button type="submit" class="btn w-100 text-start p-3 border-0">
+                <strong>{{ vinculo.escola.nome }}</strong>
+                <div class="text-secondary small">{{ vinculo.get_tipo_display }}</div>
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

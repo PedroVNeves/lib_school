@@ -1,0 +1,142 @@
+:root {
+    --surface-1: #fcfcfb;
+    --page-plane: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --gridline: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border-hairline: rgba(11, 11, 11, 0.10);
+
+    --series-1: #2a78d6; /* blue */
+    --series-2: #1baf7a; /* aqua */
+    --series-3: #eda100; /* yellow */
+    --series-4: #008300; /* green */
+    --series-5: #4a3aa7; /* violet */
+    --series-6: #e34948; /* red */
+    --series-7: #e87ba4; /* magenta */
+    --series-8: #eb6834; /* orange */
+
+    --seq-100: #cde2fb;
+    --seq-250: #86b6ef;
+    --seq-450: #2a78d6;
+    --seq-600: #184f95;
+
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-serious: #ec835a;
+    --status-critical: #d03b3b;
+}
+
+body {
+    background: var(--page-plane);
+    color: var(--text-primary);
+}
+
+.app-navbar {
+    background: #14213d;
+}
+
+.sidebar {
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-hairline);
+}
+
+.sidebar .nav-link {
+    color: var(--text-secondary);
+    border-radius: .375rem;
+    padding: .5rem .75rem;
+}
+.sidebar .nav-link:hover {
+    color: var(--series-1);
+    background: var(--seq-100);
+}
+
+/* ---- Stat tiles ---- */
+.stat-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border-hairline);
+    border-radius: .5rem;
+    padding: 1rem 1.25rem;
+    height: 100%;
+}
+.stat-tile .stat-label {
+    color: var(--text-secondary);
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: .25rem;
+}
+.stat-tile .stat-value {
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+.stat-tile .stat-delta {
+    font-size: .85rem;
+    margin-top: .25rem;
+}
+.stat-tile .stat-delta.good { color: var(--status-good); }
+.stat-tile .stat-delta.bad { color: var(--status-critical); }
+.stat-tile .stat-accent {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* ---- Chart cards ---- */
+.chart-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-hairline);
+    border-radius: .5rem;
+    padding: 1.25rem;
+    height: 100%;
+}
+.chart-card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+.chart-card .chart-wrap {
+    position: relative;
+}
+
+/* ---- Meter (progress toward due date) ---- */
+.meter-track {
+    background: var(--seq-100);
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+}
+.meter-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+.meter-fill.good { background: var(--status-good); }
+.meter-fill.warning { background: var(--status-warning); }
+.meter-fill.critical { background: var(--status-critical); }
+
+/* ---- Book cover placeholder ---- */
+.book-cover {
+    width: 100%;
+    height: 90px;
+    border-radius: .375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: .5rem;
+}
+
+.table-hover-flat tbody tr:hover {
+    background: var(--seq-100);
+}

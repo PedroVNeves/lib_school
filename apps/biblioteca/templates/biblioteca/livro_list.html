@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Catálogo de Livros</h1>
+    {% if vinculo.tipo == 'admin_geral' or vinculo.tipo == 'admin_biblioteca' %}
+    <a class="btn btn-primary" href="{% url 'livro-create' %}">+ Novo Livro</a>
+    {% endif %}
+</div>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-5">
+        <input type="text" name="q" class="form-control" placeholder="Título, autor ou ISBN" value="{{ request.GET.q|default:'' }}">
+    </div>
+    <div class="col-md-3">
+        <select name="genero" class="form-select">
+            <option value="">Todos os gêneros</option>
+            {% for g in generos %}<option value="{{ g.id }}" {% if request.GET.genero == g.id|stringformat:'s' %}selected{% endif %}>{{ g.nome }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <div class="form-check mt-2">
+            <input type="checkbox" name="disponivel" value="1" class="form-check-input" id="disp" {% if request.GET.disponivel == '1' %}checked{% endif %}>
+            <label class="form-check-label" for="disp">Só disponíveis</label>
+        </div>
+    </div>
+    <div class="col-md-2"><button class="btn btn-outline-secondary w-100">Buscar</button></div>
+</form>
+<div class="row g-3">
+{% for livro in livros %}
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="book-cover" style="background: {% cycle 'var(--series-1)' 'var(--series-2)' 'var(--series-3)' 'var(--series-4)' 'var(--series-5)' 'var(--series-6)' 'var(--series-7)' 'var(--series-8)' %};">
+                {{ livro.titulo|slice:":1" }}
+            </div>
+            <div class="card-body">
+                <h5 class="card-title"><a href="{% url 'livro-detail' livro.pk %}" class="text-decoration-none">{{ livro.titulo }}</a></h5>
+                <p class="card-text small text-muted">{% for a in livro.autores.all %}{{ a.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                {% if livro.disponivel %}<span class="badge bg-success">Disponível ({{ livro.exemplares_disponiveis }})</span>
+                {% else %}<span class="badge bg-danger">Indisponível</span>{% endif %}
+            </div>
+        </div>
+    </div>
+{% empty %}
+    <p>Nenhum livro encontrado.</p>
+{% endfor %}
+</div>
+{% if is_paginated %}
+<nav class="mt-4"><ul class="pagination">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

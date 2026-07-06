@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Empréstimos</h1>
+    <a class="btn btn-primary" href="{% url 'emprestimo-create' %}">+ Novo Empréstimo</a>
+</div>
+<form method="get" class="mb-3">
+    <select name="status" class="form-select" style="max-width:250px;" onchange="this.form.submit()">
+        <option value="">Todos os status</option>
+        <option value="ativo" {% if request.GET.status == 'ativo' %}selected{% endif %}>Ativo</option>
+        <option value="atrasado" {% if request.GET.status == 'atrasado' %}selected{% endif %}>Atrasado</option>
+        <option value="devolvido" {% if request.GET.status == 'devolvido' %}selected{% endif %}>Devolvido</option>
+    </select>
+</form>
+<table class="table">
+    <thead><tr><th>Usuário</th><th>Livro</th><th>Devolução prevista</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for e in emprestimos %}
+        <tr>
+            <td>{{ e.usuario.get_full_name }}</td>
+            <td>{{ e.livro.titulo }}</td>
+            <td>{{ e.data_prevista_devolucao|date:"d/m/Y" }}</td>
+            <td>
+                {% if e.status == 'devolvido' %}<span class="badge bg-secondary">Devolvido</span>
+                {% elif e.status == 'atrasado' %}<span class="badge bg-danger">Atrasado</span>
+                {% else %}<span class="badge bg-success">Ativo</span>{% endif %}
+            </td>
+            <td>
+                {% if e.status != 'devolvido' %}
+                <form method="post" action="{% url 'emprestimo-devolver' e.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-primary">Registrar devolução</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">Nenhum empréstimo encontrado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

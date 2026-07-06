@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Painel — Admin Geral</h1>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: var(--seq-100); color: var(--series-1);">🎓</div>
+            <div>
+                <div class="stat-label">Alunos ativos</div>
+                <div class="stat-value">{{ total_alunos }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: #e3f4ec; color: var(--series-2);">🍎</div>
+            <div>
+                <div class="stat-label">Professores ativos</div>
+                <div class="stat-value">{{ total_professores }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-tile d-flex align-items-start gap-3">
+            <div class="stat-accent" style="background: #fdf1da; color: var(--series-3);">📚</div>
+            <div>
+                <div class="stat-label">Responsáveis pela Biblioteca</div>
+                <div class="stat-value">{{ total_admins_biblioteca }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><a class="btn btn-outline-primary w-100" href="{% url 'aluno-create' %}">+ Novo Aluno</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-primary w-100" href="{% url 'professor-create' %}">+ Novo Professor</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-primary w-100" href="{% url 'admin-biblioteca-create' %}">+ Novo Resp. Biblioteca</a></div>
+    <div class="col-md-3"><a class="btn btn-outline-secondary w-100" href="{% url 'dashboard-admin-biblioteca' %}">Ver painel da Biblioteca</a></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h2>Alunos ativos por turma</h2>
+            <div class="chart-wrap" style="height: 280px;">
+                <canvas id="chartTurmas"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-card h-100">
+            <h2>Últimas ações (log de auditoria)</h2>
+            <table class="table table-sm table-hover-flat mb-0">
+                <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th></tr></thead>
+                <tbody>
+                {% for log in logs_recentes %}
+                    <tr><td class="text-muted small">{{ log.criado_em|date:"d/m H:i" }}</td><td>{{ log.usuario }}</td><td>{{ log.acao }}</td></tr>
+                {% empty %}
+                    <tr><td colspan="3" class="text-muted">Nenhuma ação registrada ainda.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <a href="{% url 'auditlog-list' %}" class="small">Ver todos os logs &rarr;</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const gridline = getComputedStyle(document.documentElement).getPropertyValue('--gridline').trim();
+Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+new Chart(document.getElementById('chartTurmas'), {
+    type: 'bar',
+    data: {
+        labels: {{ chart_turmas_labels|safe }},
+        datasets: [{
+            data: {{ chart_turmas_valores|safe }},
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
+            borderRadius: 4,
+            maxBarThickness: 32,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+</script>
+{% endblock %}

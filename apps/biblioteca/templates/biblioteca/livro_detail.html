@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3">{{ livro.titulo }}</h1>
+<p class="text-muted">{% for a in livro.autores.all %}{{ a.nome }}{% if not forloop.last %}, {% endif %}{% endfor %} — {{ livro.editora }} ({{ livro.ano_publicacao|default:"?" }})</p>
+<p>{% for g in livro.generos.all %}<span class="badge bg-info text-dark">{{ g.nome }}</span> {% endfor %}</p>
+<p>{{ livro.sinopse|default:"Sem sinopse cadastrada." }}</p>
+<p>ISBN: {{ livro.isbn|default:"-" }} | Localização: {{ livro.localizacao_prateleira|default:"-" }} | Páginas: {{ livro.num_paginas|default:"-" }}</p>
+<p>Exemplares: {{ livro.exemplares_disponiveis }} disponíveis de {{ livro.total_exemplares }}</p>
+
+{% if vinculo.tipo == 'admin_geral' or vinculo.tipo == 'admin_biblioteca' %}
+<div class="d-flex gap-2 mb-3">
+    <a class="btn btn-outline-secondary" href="{% url 'livro-update' livro.pk %}">Editar</a>
+    <form method="post" action="{% url 'livro-toggle' livro.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-outline-danger">{% if livro.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+    </form>
+</div>
+<form method="post" action="{% url 'livro-add-exemplares' livro.pk %}" class="row g-2 mb-4" style="max-width: 400px;">
+    {% csrf_token %}
+    <div class="col-auto"><input type="number" name="quantidade" min="1" value="1" class="form-control"></div>
+    <div class="col-auto"><button class="btn btn-outline-primary">Adicionar exemplares</button></div>
+</form>
+{% endif %}
+<a href="{% url 'livro-list' %}">&larr; Voltar ao catálogo</a>
+{% endblock %}

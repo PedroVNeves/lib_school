@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Professores</h1>
+    <a class="btn btn-primary" href="{% url 'professor-create' %}">+ Novo Professor</a>
+</div>
+<table class="table">
+    <thead><tr><th>Nome</th><th>Matrícula Funcional</th><th>Turmas</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for perfil in professores %}
+        <tr>
+            <td>{{ perfil.vinculo.usuario.get_full_name }}</td>
+            <td>{{ perfil.matricula_funcional }}</td>
+            <td>{% for t in perfil.turmas.all %}<span class="badge bg-secondary">{{ t.codigo }}</span> {% endfor %}</td>
+            <td>{{ perfil.vinculo.usuario.email }}</td>
+            <td>{% if perfil.vinculo.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
+            <td>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'professor-update' perfil.vinculo.usuario.id %}">Editar</a>
+                <form method="post" action="{% url 'professor-toggle' perfil.vinculo.usuario.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger">{% if perfil.vinculo.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+                </form>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6">Nenhum professor cadastrado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

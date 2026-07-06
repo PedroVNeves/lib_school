@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-3">Logs de Auditoria</h1>
+<table class="table table-sm">
+    <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Modelo</th></tr></thead>
+    <tbody>
+    {% for log in logs %}
+        <tr><td>{{ log.criado_em|date:"d/m/Y H:i" }}</td><td>{{ log.usuario }}</td><td>{{ log.acao }}</td><td>{{ log.modelo }}</td></tr>
+    {% empty %}
+        <tr><td colspan="4">Nenhum log registrado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

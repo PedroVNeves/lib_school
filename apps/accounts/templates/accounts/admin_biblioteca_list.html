@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Responsáveis pela Biblioteca</h1>
+    <a class="btn btn-primary" href="{% url 'admin-biblioteca-create' %}">+ Novo Responsável</a>
+</div>
+<table class="table">
+    <thead><tr><th>Nome</th><th>Registro Funcional</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for perfil in admins_biblioteca %}
+        <tr>
+            <td>{{ perfil.vinculo.usuario.get_full_name }}</td>
+            <td>{{ perfil.registro_funcional }}</td>
+            <td>{{ perfil.vinculo.usuario.email }}</td>
+            <td>{% if perfil.vinculo.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
+            <td>
+                <form method="post" action="{% url 'admin-biblioteca-toggle' perfil.vinculo.usuario.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger">{% if perfil.vinculo.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+                </form>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">Nenhum responsável cadastrado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<h1 class="h3 mb-3">{% if form.instance.pk %}Editar Aluno{% else %}Novo Aluno{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form|crispy }}
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{% url 'aluno-list' %}" class="btn btn-outline-secondary">Cancelar</a>
+</form>
+{% endblock %}

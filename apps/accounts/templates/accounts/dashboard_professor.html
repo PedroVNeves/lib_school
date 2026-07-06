@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 mb-4">Meus Empréstimos</h1>
+{% if turmas %}
+<p>Turmas: {% for t in turmas %}<span class="badge bg-secondary">{{ t.codigo }}</span> {% endfor %}</p>
+{% endif %}
+<table class="table table-hover-flat align-middle">
+    <thead><tr><th>Livro</th><th>Devolução prevista</th><th>Progresso</th><th>Status</th><th>Renovações</th><th></th></tr></thead>
+    <tbody>
+    {% for e in emprestimos %}
+        <tr>
+            <td>{{ e.livro.titulo }}</td>
+            <td>{{ e.data_prevista_devolucao|date:"d/m/Y" }}</td>
+            <td style="min-width: 140px;">
+                {% if e.status != 'devolvido' %}
+                <div class="meter-track"><div class="meter-fill {{ e.severidade }}" style="width: {{ e.progresso_pct }}%;"></div></div>
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if e.status == 'devolvido' %}<span class="badge bg-secondary">Devolvido</span>
+                {% elif e.dias_atraso > 0 %}<span class="badge bg-danger">Atrasado ({{ e.dias_atraso }}d)</span>
+                {% elif e.dias_restantes <= 3 %}<span class="badge bg-warning text-dark">Vence em {{ e.dias_restantes }}d</span>
+                {% else %}<span class="badge bg-success">Em dia</span>{% endif %}
+            </td>
+            <td>{{ e.renovacoes_realizadas }}</td>
+            <td>
+                {% if e.status != 'devolvido' %}
+                <form method="post" action="{% url 'emprestimo-renovar-self' e.id %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-primary" {% if not e.pode_renovar %}disabled title="Não elegível para renovação"{% endif %}>Renovar</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6">Nenhum empréstimo registrado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
