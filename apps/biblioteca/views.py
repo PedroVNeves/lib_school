@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView, View
@@ -381,9 +381,14 @@ class DashboardAdminBibliotecaView(AdminBibliotecaRequiredMixin, TemplateView):
         )
         ctx['top_turmas'] = (
             Turma.objects.filter(escola=escola)
-            .annotate(qtd=Count('alunos__vinculo__usuario__emprestimos'))
+            .annotate(
+                qtd=Sum(
+                    'alunos__vinculo__usuario__registros_leitura__paginas_incrementadas',
+                    filter=Q(alunos__vinculo__usuario__registros_leitura__escola=escola),
+                )
+            )
             .filter(qtd__gt=0)
-            .order_by('-qtd')[:5]
+            .order_by('-qtd')[:8]
         )
         ctx['top_usuarios'] = (
             Usuario.objects.filter(
