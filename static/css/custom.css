@@ -157,3 +157,54 @@ body {
 .table-hover-flat tbody tr:hover {
     background: var(--seq-100);
 }
+
+/* ---- D3 dashboard charts ---- */
+.chart-axis-label {
+    fill: var(--text-secondary);
+    font-size: .75rem;
+}
+.chart-value-label {
+    fill: var(--text-secondary);
+    font-size: .75rem;
+}
+.chart-bar {
+    transition: opacity .15s ease;
+}
+.d3-tooltip {
+    position: fixed;
+    z-index: 1080;
+    background: var(--text-primary);
+    color: #fff;
+    padding: .35rem .6rem;
+    border-radius: .35rem;
+    font-size: .8rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .1s ease;
+    max-width: 220px;
+}
+
+.filter-bar {
+    background: var(--surface-1);
+    border: 1px solid var(--border-hairline);
+    border-radius: .5rem;
+    padding: .75rem 1rem;
+}
+.filter-chip {
+    background: var(--seq-100);
+    color: var(--series-1);
+    border-radius: 999px;
+    padding: .25rem .75rem;
+    font-size: .8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+.filter-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    line-height: 1;
+    padding: 0;
+    font-size: 1rem;
+}

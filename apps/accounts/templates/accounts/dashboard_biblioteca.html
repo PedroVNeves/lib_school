@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 {% endblock %}
 {% block content %}
 <h1 class="h3 mb-4">Painel — Biblioteca</h1>
@@ -55,21 +55,35 @@
     <div class="col-md-3"><a class="btn btn-outline-secondary w-100" href="{% url 'turma-create' %}">+ Nova Turma</a></div>
 </div>
 
-<div class="row g-3 mb-3">
+<div class="filter-bar d-flex flex-wrap align-items-center gap-3 mb-3">
+    <div>
+        <div class="small text-muted mb-1">Métrica</div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Métrica" id="botoesMetrica">
+            <button type="button" class="btn btn-outline-primary active" data-metrica="livros">Livros</button>
+            <button type="button" class="btn btn-outline-primary" data-metrica="paginas">Páginas</button>
+        </div>
+    </div>
+    <div>
+        <div class="small text-muted mb-1">Ano</div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Ano" id="botoesAno"></div>
+    </div>
+    <div class="flex-grow-1 d-flex flex-wrap align-items-center gap-2" id="areaChips">
+        <span class="text-muted small" id="semFiltrosMsg">Clique em um gênero, mês ou turma no gráfico para filtrar o painel inteiro.</span>
+    </div>
+    <button type="button" class="btn btn-sm btn-link text-decoration-none d-none" id="limparFiltros">Limpar filtros</button>
+</div>
+
+<div class="row g-3 mb-3 mt-1">
     <div class="col-md-8">
         <div class="chart-card">
-            <h2>Empréstimos por mês (últimos 12 meses)</h2>
-            <div class="chart-wrap" style="height: 260px;">
-                <canvas id="chartMeses"></canvas>
-            </div>
+            <h2><span class="metrica-titulo-meses">Livros emprestados</span> por mês</h2>
+            <div id="chartMeses" class="chart-wrap" style="height: 260px;"></div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="chart-card">
-            <h2>Top gêneros emprestados</h2>
-            <div class="chart-wrap" style="height: 260px;">
-                <canvas id="chartGeneros"></canvas>
-            </div>
+            <h2>Top gêneros</h2>
+            <div id="chartGeneros" class="chart-wrap" style="height: 260px;"></div>
         </div>
     </div>
 </div>
@@ -77,22 +91,14 @@
 <div class="row g-3 mb-3">
     <div class="col-md-8">
         <div class="chart-card">
-            <h2>Turmas com mais páginas lidas</h2>
-            <div class="chart-wrap" style="height: 320px;">
-                <canvas id="chartTurmas"></canvas>
-            </div>
+            <h2>Turmas com mais <span class="metrica-titulo-turmas">livros emprestados</span></h2>
+            <div id="chartTurmas" class="chart-wrap" style="height: 320px;"></div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="chart-card h-100">
             <h2>Leitores mais ativos</h2>
-            <ol class="ps-3 mb-0">
-            {% for u in top_usuarios %}
-                <li class="mb-1">{{ u.get_full_name }} <span class="text-muted small">({{ u.qtd }})</span></li>
-            {% empty %}
-                <li class="text-muted">Sem dados ainda.</li>
-            {% endfor %}
-            </ol>
+            <ol class="ps-3 mb-0" id="listaLeitores"></ol>
         </div>
     </div>
 </div>
@@ -100,100 +106,346 @@
 <div class="row g-3 mb-3">
     <div class="col-12">
         <div class="chart-card">
-            <h2>Top 10 livros mais emprestados</h2>
-            <div class="chart-wrap" style="height: 320px;">
-                <canvas id="chartLivros"></canvas>
-            </div>
+            <h2>Top 10 livros — mais <span class="metrica-titulo-livros">emprestados</span></h2>
+            <div id="chartLivros" class="chart-wrap" style="height: 320px;"></div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<div class="d3-tooltip" id="d3Tooltip"></div>
 <script>
-const inkSecondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
-const gridline = getComputedStyle(document.documentElement).getPropertyValue('--gridline').trim();
-Chart.defaults.color = inkSecondary;
-Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', sans-serif";
-Chart.defaults.borderColor = gridline;
+(function () {
+const eventos = {{ eventos_json|safe }};
 
-new Chart(document.getElementById('chartMeses'), {
-    type: 'line',
-    data: {
-        labels: {{ chart_meses|safe }},
-        datasets: [{
-            label: 'Empréstimos',
-            data: {{ chart_meses_valores|safe }},
-            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
-            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--seq-100').trim(),
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
-            borderWidth: 2,
-        }]
-    },
-    options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, x: { grid: { display: false } } }
+const root = getComputedStyle(document.documentElement);
+const cor1 = root.getPropertyValue('--series-1').trim();
+const cor2 = root.getPropertyValue('--series-2').trim();
+const gridline = root.getPropertyValue('--gridline').trim();
+
+const METRICA_INFO = {
+    livros: { unidadeSing: 'livro', unidadePlural: 'livros', tituloMeses: 'Livros emprestados', tituloTurmas: 'livros emprestados', tituloLivros: 'emprestados' },
+    paginas: { unidadeSing: 'página', unidadePlural: 'páginas', tituloMeses: 'Páginas lidas', tituloTurmas: 'páginas lidas', tituloLivros: 'lidos (em páginas)' },
+};
+
+let metrica = 'livros';
+let filtros = { genero: null, mes: null, turma: null, ano: null };
+
+const anosDisponiveis = Array.from(new Set(eventos.map(e => e.ano))).sort();
+
+function formatPt(n) {
+    return Math.round(n).toLocaleString('pt-BR');
+}
+
+function unidade(valor) {
+    const info = METRICA_INFO[metrica];
+    return valor === 1 ? info.unidadeSing : info.unidadePlural;
+}
+
+// filtra os eventos aplicando todos os filtros ativos, exceto a dimensão informada em `excluir`
+// (assim, ao clicar num gênero, os outros gêneros continuam visíveis no próprio gráfico de gêneros)
+function dadosComFiltros(excluir) {
+    return eventos.filter(e =>
+        (excluir === 'genero' || !filtros.genero || e.genero === filtros.genero) &&
+        (excluir === 'mes' || !filtros.mes || e.mes === filtros.mes) &&
+        (excluir === 'turma' || !filtros.turma || e.turma === filtros.turma) &&
+        (!filtros.ano || e.ano === filtros.ano)
+    );
+}
+
+function somaPorChave(dados, chave) {
+    return d3.rollup(dados, v => d3.sum(v, d => d[metrica]), d => d[chave]);
+}
+
+function alternarFiltro(dimensao, valor) {
+    filtros[dimensao] = (filtros[dimensao] === valor) ? null : valor;
+    redesenharTudo();
+}
+
+function truncar(texto, max) {
+    return texto.length > max ? texto.slice(0, max - 1) + '…' : texto;
+}
+
+function mostrarTooltip(event, texto) {
+    const tip = document.getElementById('d3Tooltip');
+    tip.textContent = texto;
+    tip.style.left = (event.clientX + 14) + 'px';
+    tip.style.top = (event.clientY + 10) + 'px';
+    tip.style.opacity = 1;
+}
+function esconderTooltip() {
+    document.getElementById('d3Tooltip').style.opacity = 0;
+}
+
+// ---- gráfico de barras horizontais (gêneros, turmas, livros) ----
+function desenharBarrasH(containerId, dados, { cor, dimensao, filtroAtivo, clicavel, larguraRotulo, maxCaracteres }) {
+    const container = d3.select('#' + containerId);
+    container.selectAll('*').remove();
+    const el = document.getElementById(containerId);
+    const largura = el.clientWidth;
+    const altura = el.clientHeight;
+
+    if (!dados.length) {
+        container.append('div').attr('class', 'text-muted small text-center py-5').text('Sem dados para esse filtro.');
+        return;
     }
+
+    const desejado = larguraRotulo || 100;
+    const rotuloEsquerda = Math.min(desejado, Math.max(70, Math.round(largura * 0.38)));
+    const margem = { top: 6, right: largura < 420 ? 30 : 48, bottom: 6, left: rotuloEsquerda };
+    maxCaracteres = Math.min(maxCaracteres || 16, Math.max(6, Math.floor(rotuloEsquerda / 7)));
+    const svg = container.append('svg').attr('width', largura).attr('height', altura);
+
+    const y = d3.scaleBand().domain(dados.map(d => d.label)).range([margem.top, altura - margem.bottom]).padding(0.3);
+    const x = d3.scaleLinear().domain([0, d3.max(dados, d => d.valor) || 1]).nice().range([margem.left, largura - margem.right]);
+
+    svg.append('g')
+        .attr('transform', `translate(0,${altura - margem.bottom})`)
+        .call(d3.axisBottom(x).ticks(4).tickSize(-(altura - margem.top - margem.bottom)).tickFormat(''))
+        .call(g => g.select('.domain').remove())
+        .selectAll('line').attr('stroke', gridline);
+
+    svg.append('g').selectAll('rect')
+        .data(dados)
+        .join('rect')
+        .attr('class', 'chart-bar')
+        .attr('x', margem.left)
+        .attr('y', d => y(d.label))
+        .attr('width', d => Math.max(0, x(d.valor) - margem.left))
+        .attr('height', y.bandwidth())
+        .attr('rx', 4)
+        .attr('fill', cor)
+        .attr('opacity', d => (filtroAtivo && filtroAtivo !== d.chave) ? 0.35 : 1)
+        .style('cursor', clicavel ? 'pointer' : 'default')
+        .on('click', clicavel ? (event, d) => alternarFiltro(dimensao, d.chave) : null)
+        .on('mousemove', (event, d) => mostrarTooltip(event, `${d.label}: ${formatPt(d.valor)} ${unidade(d.valor)}`))
+        .on('mouseleave', esconderTooltip);
+
+    svg.append('g').selectAll('text')
+        .data(dados)
+        .join('text')
+        .attr('class', 'chart-value-label')
+        .attr('x', d => x(d.valor) + 6)
+        .attr('y', d => y(d.label) + y.bandwidth() / 2)
+        .attr('dy', '0.35em')
+        .text(d => formatPt(d.valor));
+
+    svg.append('g')
+        .attr('transform', `translate(${margem.left - 8},0)`)
+        .call(d3.axisLeft(y).tickSize(0).tickFormat(d => truncar(d, maxCaracteres)))
+        .call(g => g.select('.domain').remove())
+        .selectAll('text')
+        .attr('class', 'chart-axis-label')
+        .style('text-anchor', 'end')
+        .append('title').text(d => d);
+}
+
+// ---- gráfico de colunas verticais (meses) ----
+function desenharBarrasV(containerId, dados, { cor, dimensao, filtroAtivo, clicavel }) {
+    const container = d3.select('#' + containerId);
+    container.selectAll('*').remove();
+    const el = document.getElementById(containerId);
+    const largura = el.clientWidth;
+    const altura = el.clientHeight;
+
+    const larguraPorBanda = (largura - 50) / Math.max(dados.length, 1);
+    const rotacionar = larguraPorBanda < 42;
+    const margem = { top: 20, right: 10, bottom: rotacionar ? 46 : 30, left: 40 };
+    const svg = container.append('svg').attr('width', largura).attr('height', altura);
+
+    const x = d3.scaleBand().domain(dados.map(d => d.label)).range([margem.left, largura - margem.right]).padding(0.35);
+    const y = d3.scaleLinear().domain([0, d3.max(dados, d => d.valor) || 1]).nice().range([altura - margem.bottom, margem.top]);
+
+    svg.append('g')
+        .attr('transform', `translate(${margem.left},0)`)
+        .call(d3.axisLeft(y).ticks(4).tickSize(-(largura - margem.left - margem.right)).tickFormat(''))
+        .call(g => g.select('.domain').remove())
+        .selectAll('line').attr('stroke', gridline);
+
+    svg.append('g').selectAll('rect')
+        .data(dados)
+        .join('rect')
+        .attr('class', 'chart-bar')
+        .attr('x', d => x(d.label))
+        .attr('y', d => y(d.valor))
+        .attr('width', x.bandwidth())
+        .attr('height', d => (altura - margem.bottom) - y(d.valor))
+        .attr('rx', 3)
+        .attr('fill', cor)
+        .attr('opacity', d => (filtroAtivo && filtroAtivo !== d.chave) ? 0.35 : 1)
+        .style('cursor', clicavel ? 'pointer' : 'default')
+        .on('click', clicavel ? (event, d) => alternarFiltro(dimensao, d.chave) : null)
+        .on('mousemove', (event, d) => mostrarTooltip(event, `${d.label}: ${formatPt(d.valor)} ${unidade(d.valor)}`))
+        .on('mouseleave', esconderTooltip);
+
+    const eixoX = svg.append('g')
+        .attr('transform', `translate(0,${altura - margem.bottom})`)
+        .call(d3.axisBottom(x).tickSize(0))
+        .call(g => g.select('.domain').remove());
+
+    if (rotacionar) {
+        eixoX.selectAll('text')
+            .attr('class', 'chart-axis-label')
+            .attr('transform', 'rotate(-40)')
+            .style('text-anchor', 'end')
+            .attr('dx', '-0.4em')
+            .attr('dy', '0.4em');
+    } else {
+        eixoX.selectAll('text').attr('class', 'chart-axis-label');
+    }
+}
+
+function mesesParaExibir() {
+    const nomesPt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    if (filtros.ano) {
+        return Array.from({ length: 12 }, (_, i) => ({
+            chave: `${filtros.ano}-${String(i + 1).padStart(2, '0')}`,
+            label: `${nomesPt[i]}/${String(filtros.ano).slice(2)}`,
+        }));
+    }
+    const porChave = new Map(eventos.map(e => [e.mes, e.mes_label]));
+    return Array.from(new Set(eventos.map(e => e.mes))).sort().map(c => ({ chave: c, label: porChave.get(c) }));
+}
+
+function redesenharMeses() {
+    const base = dadosComFiltros('mes');
+    const somas = somaPorChave(base, 'mes');
+    const meses = mesesParaExibir();
+    const dados = meses.map(m => ({ label: m.label, chave: m.chave, valor: somas.get(m.chave) || 0 }));
+    desenharBarrasV('chartMeses', dados, { cor: cor1, dimensao: 'mes', filtroAtivo: filtros.mes, clicavel: true });
+}
+
+function redesenharGeneros() {
+    const base = dadosComFiltros('genero').filter(e => e.genero);
+    const somas = somaPorChave(base, 'genero');
+    const dados = Array.from(somas, ([chave, valor]) => ({ label: chave, chave, valor })).sort((a, b) => d3.descending(a.valor, b.valor)).slice(0, 8);
+    desenharBarrasH('chartGeneros', dados, { cor: cor1, dimensao: 'genero', filtroAtivo: filtros.genero, clicavel: true });
+}
+
+function redesenharTurmas() {
+    const base = dadosComFiltros('turma').filter(e => e.turma);
+    const somas = somaPorChave(base, 'turma');
+    const dados = Array.from(somas, ([chave, valor]) => ({ label: chave, chave, valor })).sort((a, b) => d3.descending(a.valor, b.valor)).slice(0, 8);
+    desenharBarrasH('chartTurmas', dados, { cor: cor2, dimensao: 'turma', filtroAtivo: filtros.turma, clicavel: true });
+}
+
+function redesenharLivros() {
+    const base = dadosComFiltros(null);
+    const somas = somaPorChave(base, 'livro');
+    const dados = Array.from(somas, ([chave, valor]) => ({ label: chave, chave, valor })).sort((a, b) => d3.descending(a.valor, b.valor)).slice(0, 10);
+    desenharBarrasH('chartLivros', dados, { cor: cor1, dimensao: 'livro', filtroAtivo: null, clicavel: false, larguraRotulo: 220, maxCaracteres: 34 });
+}
+
+function redesenharLeitores() {
+    const base = dadosComFiltros(null);
+    const somas = somaPorChave(base, 'usuario');
+    const dados = Array.from(somas, ([label, valor]) => ({ label, valor })).sort((a, b) => d3.descending(a.valor, b.valor)).slice(0, 8);
+    const lista = document.getElementById('listaLeitores');
+    lista.innerHTML = '';
+    if (!dados.length) {
+        lista.innerHTML = '<li class="text-muted">Sem dados para esse filtro.</li>';
+        return;
+    }
+    dados.forEach(d => {
+        const li = document.createElement('li');
+        li.className = 'mb-1';
+        li.textContent = `${d.label} `;
+        const span = document.createElement('span');
+        span.className = 'text-muted small';
+        span.textContent = `(${formatPt(d.valor)} ${unidade(d.valor)})`;
+        li.appendChild(span);
+        lista.appendChild(li);
+    });
+}
+
+function atualizarTitulos() {
+    const info = METRICA_INFO[metrica];
+    document.querySelectorAll('.metrica-titulo-meses').forEach(el => el.textContent = info.tituloMeses);
+    document.querySelectorAll('.metrica-titulo-turmas').forEach(el => el.textContent = info.tituloTurmas);
+    document.querySelectorAll('.metrica-titulo-livros').forEach(el => el.textContent = info.tituloLivros);
+}
+
+function atualizarChips() {
+    const area = document.getElementById('areaChips');
+    area.innerHTML = '';
+    const ativos = [];
+    if (filtros.genero) ativos.push({ dim: 'genero', label: `Gênero: ${filtros.genero}` });
+    if (filtros.mes) ativos.push({ dim: 'mes', label: `Mês: ${filtros.mes}` });
+    if (filtros.turma) ativos.push({ dim: 'turma', label: `Turma: ${filtros.turma}` });
+
+    if (!ativos.length) {
+        const span = document.createElement('span');
+        span.className = 'text-muted small';
+        span.id = 'semFiltrosMsg';
+        span.textContent = 'Clique em um gênero, mês ou turma no gráfico para filtrar o painel inteiro.';
+        area.appendChild(span);
+    } else {
+        ativos.forEach(a => {
+            const chip = document.createElement('span');
+            chip.className = 'filter-chip';
+            chip.innerHTML = `${a.label} <button type="button" aria-label="remover filtro">&times;</button>`;
+            chip.querySelector('button').addEventListener('click', () => { filtros[a.dim] = null; redesenharTudo(); });
+            area.appendChild(chip);
+        });
+    }
+    document.getElementById('limparFiltros').classList.toggle('d-none', ativos.length === 0);
+}
+
+function redesenharTudo() {
+    atualizarTitulos();
+    atualizarChips();
+    redesenharMeses();
+    redesenharGeneros();
+    redesenharTurmas();
+    redesenharLivros();
+    redesenharLeitores();
+}
+
+// ---- controles ----
+document.getElementById('botoesMetrica').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-metrica]');
+    if (!btn) return;
+    metrica = btn.dataset.metrica;
+    document.querySelectorAll('#botoesMetrica button').forEach(b => b.classList.toggle('active', b === btn));
+    redesenharTudo();
 });
 
-new Chart(document.getElementById('chartGeneros'), {
-    type: 'bar',
-    data: {
-        labels: {{ chart_generos_labels|safe }},
-        datasets: [{
-            data: {{ chart_generos_valores|safe }},
-            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
-            borderRadius: 4,
-            maxBarThickness: 24,
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, y: { grid: { display: false } } }
-    }
+const botoesAno = document.getElementById('botoesAno');
+const btnTodos = document.createElement('button');
+btnTodos.type = 'button';
+btnTodos.className = 'btn btn-outline-secondary active';
+btnTodos.textContent = 'Todos';
+btnTodos.dataset.ano = '';
+botoesAno.appendChild(btnTodos);
+anosDisponiveis.forEach(ano => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline-secondary';
+    btn.textContent = ano;
+    btn.dataset.ano = ano;
+    botoesAno.appendChild(btn);
+});
+botoesAno.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-ano]');
+    if (!btn) return;
+    filtros.ano = btn.dataset.ano ? parseInt(btn.dataset.ano, 10) : null;
+    document.querySelectorAll('#botoesAno button').forEach(b => b.classList.toggle('active', b === btn));
+    redesenharTudo();
 });
 
-new Chart(document.getElementById('chartLivros'), {
-    type: 'bar',
-    data: {
-        labels: {{ chart_livros_labels|safe }},
-        datasets: [{
-            data: {{ chart_livros_valores|safe }},
-            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim(),
-            borderRadius: 4,
-            maxBarThickness: 20,
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, y: { grid: { display: false } } }
-    }
+document.getElementById('limparFiltros').addEventListener('click', () => {
+    filtros = { genero: null, mes: null, turma: null, ano: filtros.ano };
+    redesenharTudo();
 });
 
-new Chart(document.getElementById('chartTurmas'), {
-    type: 'bar',
-    data: {
-        labels: {{ chart_turmas_labels|safe }},
-        datasets: [{
-            data: {{ chart_turmas_valores|safe }},
-            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--series-2').trim(),
-            borderRadius: 4,
-            maxBarThickness: 24,
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.formattedValue} página${ctx.raw == 1 ? '' : 's'} lida${ctx.raw == 1 ? '' : 's'}` } },
-        },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridline } }, y: { grid: { display: false } } }
-    }
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(redesenharTudo, 120);
 });
+
+redesenharTudo();
+})();
 </script>
 {% endblock %}

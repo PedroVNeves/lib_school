@@ -352,7 +352,7 @@ class DashboardAdminBibliotecaView(AdminBibliotecaRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         import json
 
-        from django.db.models.functions import TruncMonth
+        from django.db.models import Prefetch
 
         escola = self.request.escola
         atualizar_status_atrasados(escola)
@@ -367,63 +367,47 @@ class DashboardAdminBibliotecaView(AdminBibliotecaRequiredMixin, TemplateView):
             escola=escola, data_real_devolucao__gte=hoje - timedelta(days=7)
         ).count()
 
-        ctx['top_livros'] = (
-            Livro.objects.filter(escola=escola)
-            .annotate(qtd=Count('emprestimos'))
-            .filter(qtd__gt=0)
-            .order_by('-qtd')[:10]
-        )
-        ctx['top_generos'] = (
-            Genero.objects.filter(escola=escola)
-            .annotate(qtd=Count('livros__emprestimos'))
-            .filter(qtd__gt=0)
-            .order_by('-qtd')[:5]
-        )
-        ctx['top_turmas'] = (
-            Turma.objects.filter(escola=escola)
-            .annotate(
-                qtd=Sum(
-                    'alunos__vinculo__usuario__registros_leitura__paginas_incrementadas',
-                    filter=Q(alunos__vinculo__usuario__registros_leitura__escola=escola),
-                )
+        emprestimos_qs = (
+            Emprestimo.objects.filter(escola=escola)
+            .select_related('usuario', 'livro')
+            .prefetch_related(
+                'livro__generos',
+                Prefetch(
+                    'usuario__vinculos',
+                    queryset=Vinculo.objects.filter(escola=escola).select_related('perfil_aluno__turma'),
+                ),
             )
-            .filter(qtd__gt=0)
-            .order_by('-qtd')[:8]
-        )
-        ctx['top_usuarios'] = (
-            Usuario.objects.filter(
-                vinculos__escola=escola, vinculos__tipo__in=[Vinculo.TIPO_ALUNO, Vinculo.TIPO_PROFESSOR]
-            )
-            .annotate(qtd=Count('emprestimos', filter=Q(emprestimos__escola=escola)))
-            .filter(qtd__gt=0)
-            .order_by('-qtd')[:8]
+            .annotate(paginas=Sum('registros_leitura__paginas_incrementadas'))
         )
 
-        inicio = (hoje.replace(day=1) - timedelta(days=335)).replace(day=1)
-        por_mes = (
-            Emprestimo.objects.filter(escola=escola, data_saida__date__gte=inicio)
-            .annotate(mes=TruncMonth('data_saida'))
-            .values('mes')
-            .annotate(qtd=Count('id'))
-            .order_by('mes')
-        )
-        contagem_por_mes = {item['mes'].strftime('%Y-%m'): item['qtd'] for item in por_mes}
-        labels_meses, valores_meses = [], []
-        cursor = inicio
-        for _ in range(12):
-            chave = cursor.strftime('%Y-%m')
-            labels_meses.append(cursor.strftime('%b/%y'))
-            valores_meses.append(contagem_por_mes.get(chave, 0))
-            cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+        meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        eventos = []
+        for emp in emprestimos_qs:
+            vinculo = next(iter(emp.usuario.vinculos.all()), None)
+            turma_codigo = None
+            if vinculo is not None:
+                perfil = getattr(vinculo, 'perfil_aluno', None)
+                if perfil is not None and perfil.turma_id:
+                    turma_codigo = perfil.turma.codigo
+            dt = emp.data_saida
+            base = {
+                'mes': dt.strftime('%Y-%m'),
+                'mes_label': f'{meses_pt[dt.month - 1]}/{dt.strftime("%y")}',
+                'ano': dt.year,
+                'turma': turma_codigo,
+                'livro': emp.livro.titulo,
+                'usuario': emp.usuario.get_full_name() or emp.usuario.email,
+                'livros': 1,
+                'paginas': emp.paginas or 0,
+            }
+            generos = list(emp.livro.generos.all())
+            if generos:
+                for genero in generos:
+                    eventos.append({**base, 'genero': genero.nome})
+            else:
+                eventos.append({**base, 'genero': None})
 
-        ctx['chart_meses'] = json.dumps(labels_meses)
-        ctx['chart_meses_valores'] = json.dumps(valores_meses)
-        ctx['chart_livros_labels'] = json.dumps([l.titulo for l in ctx['top_livros']])
-        ctx['chart_livros_valores'] = json.dumps([l.qtd for l in ctx['top_livros']])
-        ctx['chart_generos_labels'] = json.dumps([g.nome for g in ctx['top_generos']])
-        ctx['chart_generos_valores'] = json.dumps([g.qtd for g in ctx['top_generos']])
-        ctx['chart_turmas_labels'] = json.dumps([t.codigo for t in ctx['top_turmas']])
-        ctx['chart_turmas_valores'] = json.dumps([t.qtd for t in ctx['top_turmas']])
+        ctx['eventos_json'] = json.dumps(eventos)
         return ctx
 
 
