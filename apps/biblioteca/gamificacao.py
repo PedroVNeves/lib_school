@@ -54,6 +54,19 @@ def marcar_livro_concluido(*, emprestimo, usuario_solicitante):
     if emprestimo.concluido:
         raise GamificacaoError('Este livro já está marcado como concluído.')
 
+    num_paginas = emprestimo.livro.num_paginas
+    if num_paginas:
+        ultimo = emprestimo.registros_leitura.order_by('-pagina_atual').first()
+        pagina_anterior = ultimo.pagina_atual if ultimo else 0
+        if num_paginas > pagina_anterior:
+            RegistroLeitura.objects.create(
+                escola=emprestimo.escola,
+                emprestimo=emprestimo,
+                usuario=usuario_solicitante,
+                pagina_atual=num_paginas,
+                paginas_incrementadas=num_paginas - pagina_anterior,
+            )
+
     emprestimo.concluido = True
     emprestimo.concluido_em = timezone.now()
     emprestimo.save(update_fields=['concluido', 'concluido_em'])
