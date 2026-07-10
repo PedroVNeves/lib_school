@@ -14,8 +14,9 @@ from apps.biblioteca.services import EmprestimoError, renovar_emprestimo
 from apps.escolas.models import Vinculo
 
 from .forms import AdminBibliotecaForm, AlunoForm, ProfessorForm
-from .mixins import AdminGeralRequiredMixin
+from .mixins import AdminBibliotecaRequiredMixin, AdminGeralRequiredMixin
 from .models import PerfilAdminBiblioteca, PerfilAluno, PerfilProfessor, Usuario
+from .utils import gerar_senha
 
 
 class CustomLoginView(auth_views.LoginView):
@@ -77,7 +78,7 @@ class DashboardAdminGeralView(AdminGeralRequiredMixin, TemplateView):
         return ctx
 
 
-class ListaAlunosView(AdminGeralRequiredMixin, ListView):
+class ListaAlunosView(AdminBibliotecaRequiredMixin, ListView):
     model = PerfilAluno
     template_name = 'accounts/aluno_list.html'
     context_object_name = 'alunos'
@@ -154,7 +155,24 @@ class AlunoToggleAtivoView(AdminGeralRequiredMixin, View):
         return redirect('aluno-list')
 
 
-class ListaProfessoresView(AdminGeralRequiredMixin, ListView):
+class AlunoResetarSenhaView(AdminBibliotecaRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_ALUNO, escola=request.escola)
+        senha = gerar_senha()
+        vinculo.usuario.set_password(senha)
+        vinculo.usuario.save(update_fields=['password'])
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Resetou senha de {vinculo.usuario}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        messages.success(request, f'Nova senha para {vinculo.usuario.get_full_name()}: {senha}')
+        return redirect('aluno-list')
+
+
+class ListaProfessoresView(AdminBibliotecaRequiredMixin, ListView):
     model = PerfilProfessor
     template_name = 'accounts/professor_list.html'
     context_object_name = 'professores'
@@ -227,6 +245,23 @@ class ProfessorToggleAtivoView(AdminGeralRequiredMixin, View):
         return redirect('professor-list')
 
 
+class ProfessorResetarSenhaView(AdminBibliotecaRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_PROFESSOR, escola=request.escola)
+        senha = gerar_senha()
+        vinculo.usuario.set_password(senha)
+        vinculo.usuario.save(update_fields=['password'])
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Resetou senha de {vinculo.usuario}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        messages.success(request, f'Nova senha para {vinculo.usuario.get_full_name()}: {senha}')
+        return redirect('professor-list')
+
+
 class ListaAdminsBibliotecaView(AdminGeralRequiredMixin, ListView):
     model = PerfilAdminBiblioteca
     template_name = 'accounts/admin_biblioteca_list.html'
@@ -276,6 +311,23 @@ class AdminBibliotecaToggleAtivoView(AdminGeralRequiredMixin, View):
             objeto_id=vinculo.usuario_id,
         )
         messages.success(request, 'Status atualizado com sucesso.')
+        return redirect('admin-biblioteca-list')
+
+
+class AdminBibliotecaResetarSenhaView(AdminGeralRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_ADMIN_BIBLIOTECA, escola=request.escola)
+        senha = gerar_senha()
+        vinculo.usuario.set_password(senha)
+        vinculo.usuario.save(update_fields=['password'])
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Resetou senha de {vinculo.usuario}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        messages.success(request, f'Nova senha para {vinculo.usuario.get_full_name()}: {senha}')
         return redirect('admin-biblioteca-list')
 
 

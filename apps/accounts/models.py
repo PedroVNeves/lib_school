@@ -25,6 +25,8 @@ class PerfilAluno(models.Model):
     data_nascimento = models.DateField(null=True, blank=True)
     responsavel_nome = models.CharField(max_length=200, blank=True)
     responsavel_contato = models.CharField(max_length=20, blank=True)
+    telefone = models.CharField(max_length=20, blank=True)
+    cpf = models.CharField(max_length=14, blank=True)
 
     class Meta:
         unique_together = ['vinculo', 'matricula']
@@ -38,6 +40,8 @@ class PerfilProfessor(models.Model):
     matricula_funcional = models.CharField(max_length=20)
     disciplinas = models.CharField(max_length=500, blank=True)
     turmas = models.ManyToManyField('biblioteca.Turma', related_name='professores', blank=True)
+    telefone = models.CharField(max_length=20, blank=True)
+    cpf = models.CharField(max_length=14, blank=True)
 
     class Meta:
         unique_together = ['vinculo', 'matricula_funcional']
@@ -49,6 +53,8 @@ class PerfilProfessor(models.Model):
 class PerfilAdminBiblioteca(models.Model):
     vinculo = models.OneToOneField('escolas.Vinculo', on_delete=models.CASCADE, related_name='perfil_biblioteca')
     registro_funcional = models.CharField(max_length=20)
+    telefone = models.CharField(max_length=20, blank=True)
+    cpf = models.CharField(max_length=14, blank=True)
 
     class Meta:
         unique_together = ['vinculo', 'registro_funcional']

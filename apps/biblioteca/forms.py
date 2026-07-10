@@ -116,4 +116,9 @@ class ConfiguracaoForm(forms.ModelForm):
             'prazo_emprestimo_aluno', 'prazo_emprestimo_professor', 'prazo_emprestimo_turma',
             'max_renovacoes', 'max_livros_aluno', 'max_livros_professor',
             'dias_lembrete_vencimento', 'max_dias_notificacao_atraso',
+            'metodo_recuperacao_senha',
+            'exigir_cpf_aluno', 'exigir_telefone_aluno',
+            'exigir_data_nascimento_aluno', 'exigir_responsavel_aluno',
+            'exigir_cpf_professor', 'exigir_telefone_professor',
+            'exigir_cpf_admin_biblioteca', 'exigir_telefone_admin_biblioteca',
         ]

@@ -1,10 +1,11 @@
 from django import forms
 from django.contrib.auth.password_validation import validate_password
 
-from apps.biblioteca.models import Turma
+from apps.biblioteca.models import Configuracao, Turma
 from apps.escolas.models import Vinculo
 
 from .models import PerfilAdminBiblioteca, PerfilAluno, PerfilProfessor, Usuario
+from .validators import validar_cpf
 
 
 class BaseUsuarioForm(forms.ModelForm):
@@ -41,6 +42,11 @@ class BaseUsuarioForm(forms.ModelForm):
             validate_password(senha)
         return cleaned_data
 
+    def clean_cpf(self):
+        cpf = self.cleaned_data.get('cpf')
+        validar_cpf(cpf)
+        return cpf
+
     def _post_clean(self):
         if self._usuario_existente:
             return
@@ -62,10 +68,20 @@ class AlunoForm(BaseUsuarioForm):
     data_nascimento = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     responsavel_nome = forms.CharField(max_length=200, required=False)
     responsavel_contato = forms.CharField(max_length=20, required=False)
+    telefone = forms.CharField(max_length=20, required=False, label='Telefone')
+    cpf = forms.CharField(max_length=14, required=False, label='CPF')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['turma'].queryset = Turma.objects.filter(escola=self.escola, ativa=True)
+
+        config = Configuracao.get_solo(self.escola)
+        self.fields['cpf'].required = config.exigir_cpf_aluno
+        self.fields['telefone'].required = config.exigir_telefone_aluno
+        self.fields['data_nascimento'].required = config.exigir_data_nascimento_aluno
+        self.fields['responsavel_nome'].required = config.exigir_responsavel_aluno
+        self.fields['responsavel_contato'].required = config.exigir_responsavel_aluno
+
         if self.instance.pk:
             vinculo = self.instance.vinculos.filter(escola=self.escola).first()
             perfil = getattr(vinculo, 'perfil_aluno', None) if vinculo else None
@@ -75,6 +91,8 @@ class AlunoForm(BaseUsuarioForm):
                 self.fields['data_nascimento'].initial = perfil.data_nascimento
                 self.fields['responsavel_nome'].initial = perfil.responsavel_nome
                 self.fields['responsavel_contato'].initial = perfil.responsavel_contato
+                self.fields['telefone'].initial = perfil.telefone
+                self.fields['cpf'].initial = perfil.cpf
 
     def save(self, commit=True):
         usuario = super().save(commit=commit)
@@ -87,6 +105,8 @@ class AlunoForm(BaseUsuarioForm):
         perfil.data_nascimento = self.cleaned_data.get('data_nascimento')
         perfil.responsavel_nome = self.cleaned_data.get('responsavel_nome', '')
         perfil.responsavel_contato = self.cleaned_data.get('responsavel_contato', '')
+        perfil.telefone = self.cleaned_data.get('telefone', '')
+        perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
         self.instance = usuario
         return usuario
@@ -96,10 +116,17 @@ class ProfessorForm(BaseUsuarioForm):
     matricula_funcional = forms.CharField(max_length=20)
     disciplinas = forms.CharField(max_length=500, required=False)
     turmas = forms.ModelMultipleChoiceField(queryset=Turma.objects.none(), required=False)
+    telefone = forms.CharField(max_length=20, required=False, label='Telefone')
+    cpf = forms.CharField(max_length=14, required=False, label='CPF')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['turmas'].queryset = Turma.objects.filter(escola=self.escola, ativa=True)
+
+        config = Configuracao.get_solo(self.escola)
+        self.fields['cpf'].required = config.exigir_cpf_professor
+        self.fields['telefone'].required = config.exigir_telefone_professor
+
         if self.instance.pk:
             vinculo = self.instance.vinculos.filter(escola=self.escola).first()
             perfil = getattr(vinculo, 'perfil_professor', None) if vinculo else None
@@ -107,6 +134,8 @@ class ProfessorForm(BaseUsuarioForm):
                 self.fields['matricula_funcional'].initial = perfil.matricula_funcional
                 self.fields['disciplinas'].initial = perfil.disciplinas
                 self.fields['turmas'].initial = perfil.turmas.all()
+                self.fields['telefone'].initial = perfil.telefone
+                self.fields['cpf'].initial = perfil.cpf
 
     def save(self, commit=True):
         usuario = super().save(commit=commit)
@@ -116,6 +145,8 @@ class ProfessorForm(BaseUsuarioForm):
         perfil, _ = PerfilProfessor.objects.get_or_create(vinculo=vinculo)
         perfil.matricula_funcional = self.cleaned_data['matricula_funcional']
         perfil.disciplinas = self.cleaned_data.get('disciplinas', '')
+        perfil.telefone = self.cleaned_data.get('telefone', '')
+        perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
         perfil.turmas.set(self.cleaned_data.get('turmas') or [])
         self.instance = usuario
@@ -124,14 +155,23 @@ class ProfessorForm(BaseUsuarioForm):
 
 class AdminBibliotecaForm(BaseUsuarioForm):
     registro_funcional = forms.CharField(max_length=20)
+    telefone = forms.CharField(max_length=20, required=False, label='Telefone')
+    cpf = forms.CharField(max_length=14, required=False, label='CPF')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        config = Configuracao.get_solo(self.escola)
+        self.fields['cpf'].required = config.exigir_cpf_admin_biblioteca
+        self.fields['telefone'].required = config.exigir_telefone_admin_biblioteca
+
         if self.instance.pk:
             vinculo = self.instance.vinculos.filter(escola=self.escola).first()
             perfil = getattr(vinculo, 'perfil_biblioteca', None) if vinculo else None
             if perfil:
                 self.fields['registro_funcional'].initial = perfil.registro_funcional
+                self.fields['telefone'].initial = perfil.telefone
+                self.fields['cpf'].initial = perfil.cpf
 
     def save(self, commit=True):
         usuario = super().save(commit=commit)
@@ -140,6 +180,8 @@ class AdminBibliotecaForm(BaseUsuarioForm):
         )
         perfil, _ = PerfilAdminBiblioteca.objects.get_or_create(vinculo=vinculo)
         perfil.registro_funcional = self.cleaned_data['registro_funcional']
+        perfil.telefone = self.cleaned_data.get('telefone', '')
+        perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
         self.instance = usuario
         return usuario

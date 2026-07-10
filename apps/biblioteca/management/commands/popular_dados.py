@@ -1,6 +1,4 @@
 import random
-import secrets
-import string
 from datetime import date, datetime, timedelta
 
 from django.core.management.base import BaseCommand
@@ -8,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import PerfilAdminBiblioteca, PerfilAluno, PerfilProfessor, Usuario
+from apps.accounts.utils import gerar_senha
 from apps.biblioteca.models import (
     Autor,
     Configuracao,
@@ -24,21 +23,6 @@ try:
     from faker import Faker
 except ImportError:
     Faker = None
-
-
-ALFABETO_SEM_AMBIGUOS = (
-    string.ascii_letters.replace('l', '').replace('I', '').replace('O', '')
-    + string.digits.replace('0', '').replace('1', '')
-)
-
-
-def gerar_senha(tamanho=12):
-    """Gera senha aleatória segura (letras, dígitos e símbolo), sem caracteres ambíguos."""
-    simbolos = '!@#$%&*'
-    base = [secrets.choice(ALFABETO_SEM_AMBIGUOS) for _ in range(tamanho - 1)]
-    base.append(secrets.choice(simbolos))
-    secrets.SystemRandom().shuffle(base)
-    return ''.join(base)
 
 
 ESCOLAS_SEED = [

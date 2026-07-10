@@ -107,6 +107,15 @@ class Exemplar(models.Model):
 
 
 class Configuracao(models.Model):
+    METODO_RECUPERACAO_ADMIN = 'admin'
+    METODO_RECUPERACAO_EMAIL = 'email'
+    METODO_RECUPERACAO_SMS = 'sms'
+    METODO_RECUPERACAO_CHOICES = [
+        (METODO_RECUPERACAO_ADMIN, 'Reset feito por um administrador'),
+        (METODO_RECUPERACAO_EMAIL, 'E-mail (em breve)'),
+        (METODO_RECUPERACAO_SMS, 'SMS (em breve)'),
+    ]
+
     escola = models.OneToOneField('escolas.Escola', on_delete=models.CASCADE, related_name='configuracao')
     prazo_emprestimo_aluno = models.IntegerField(default=14)
     prazo_emprestimo_professor = models.IntegerField(default=30)
@@ -116,6 +125,18 @@ class Configuracao(models.Model):
     max_livros_professor = models.IntegerField(default=10)
     dias_lembrete_vencimento = models.IntegerField(default=3)
     max_dias_notificacao_atraso = models.IntegerField(default=30)
+
+    metodo_recuperacao_senha = models.CharField(
+        max_length=10, choices=METODO_RECUPERACAO_CHOICES, default=METODO_RECUPERACAO_ADMIN
+    )
+    exigir_cpf_aluno = models.BooleanField(default=False)
+    exigir_telefone_aluno = models.BooleanField(default=False)
+    exigir_data_nascimento_aluno = models.BooleanField(default=False)
+    exigir_responsavel_aluno = models.BooleanField(default=False)
+    exigir_cpf_professor = models.BooleanField(default=False)
+    exigir_telefone_professor = models.BooleanField(default=False)
+    exigir_cpf_admin_biblioteca = models.BooleanField(default=False)
+    exigir_telefone_admin_biblioteca = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Configuração'

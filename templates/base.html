@@ -59,9 +59,11 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'turma-list' %}">Turmas</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'configuracoes' %}">Configurações</a></li>
                     {% endif %}
-                    {% if vinculo.tipo == 'admin_geral' %}
+                    {% if vinculo.tipo == 'admin_geral' or vinculo.tipo == 'admin_biblioteca' %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'aluno-list' %}">Alunos</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'professor-list' %}">Professores</a></li>
+                    {% endif %}
+                    {% if vinculo.tipo == 'admin_geral' %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'admin-biblioteca-list' %}">Responsáveis Biblioteca</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'auditlog-list' %}">Logs de Auditoria</a></li>
                     {% endif %}

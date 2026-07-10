@@ -6,23 +6,28 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Nome</th><th>Registro Funcional</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>Registro Funcional</th><th>E-mail</th><th>Telefone</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for perfil in admins_biblioteca %}
         <tr>
             <td>{{ perfil.vinculo.usuario.get_full_name }}</td>
             <td>{{ perfil.registro_funcional }}</td>
             <td>{{ perfil.vinculo.usuario.email }}</td>
+            <td>{{ perfil.telefone|default:"-" }}</td>
             <td>{% if perfil.vinculo.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
             <td>
                 <form method="post" action="{% url 'admin-biblioteca-toggle' perfil.vinculo.usuario.id %}" class="d-inline">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-danger">{% if perfil.vinculo.ativo %}Desativar{% else %}Ativar{% endif %}</button>
                 </form>
+                <form method="post" action="{% url 'admin-biblioteca-resetar-senha' perfil.vinculo.usuario.id %}" class="d-inline" onsubmit="return confirm('Gerar uma nova senha para {{ perfil.vinculo.usuario.get_full_name }}? A senha atual deixará de funcionar.');">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-warning">Resetar senha</button>
+                </form>
             </td>
         </tr>
     {% empty %}
-        <tr><td colspan="5">Nenhum responsável cadastrado.</td></tr>
+        <tr><td colspan="6">Nenhum responsável cadastrado.</td></tr>
     {% endfor %}
     </tbody>
 </table>

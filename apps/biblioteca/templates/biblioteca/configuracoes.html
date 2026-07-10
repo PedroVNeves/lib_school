@@ -2,6 +2,11 @@
 {% load crispy_forms_tags %}
 {% block content %}
 <h1 class="h3 mb-3">Configurações do Sistema</h1>
+<div class="alert alert-warning">
+    Recuperação de senha por <strong>e-mail</strong> e <strong>SMS</strong> ainda não estão configuradas nesta
+    instalação — mesmo que selecionadas abaixo, o reset continua sendo feito manualmente por um administrador
+    (geral ou da biblioteca) na tela de alunos/professores.
+</div>
 <form method="post">
     {% csrf_token %}
     {{ form|crispy }}
