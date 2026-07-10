@@ -10,3 +10,5 @@ media/
 staticfiles/
 *.log
 .DS_Store
+BIBLIOTECA.xlsx
+.firebase/
