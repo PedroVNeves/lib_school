@@ -4,6 +4,7 @@ crispy-bootstrap5>=2024.10
 Pillow>=10.0
 Faker>=26.0
 python-decouple>=3.8
+openpyxl>=3.1
 
 # Produção (Cloud Run)
 gunicorn>=22.0
