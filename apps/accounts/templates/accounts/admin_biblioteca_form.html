@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 {% block content %}
-<h1 class="h3 mb-3">Novo Responsável pela Biblioteca</h1>
+<h1 class="h3 mb-3">{% if form.instance.pk %}Editar Responsável pela Biblioteca{% else %}Novo Responsável pela Biblioteca{% endif %}</h1>
 <form method="post">
     {% csrf_token %}
     {{ form|crispy }}

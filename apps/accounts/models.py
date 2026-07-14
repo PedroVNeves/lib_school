@@ -20,7 +20,7 @@ class Usuario(AbstractUser):
 
 class PerfilAluno(models.Model):
     vinculo = models.OneToOneField('escolas.Vinculo', on_delete=models.CASCADE, related_name='perfil_aluno')
-    matricula = models.CharField(max_length=20)
+    matricula = models.CharField(max_length=20, blank=True)
     turma = models.ForeignKey('biblioteca.Turma', on_delete=models.SET_NULL, null=True, blank=True, related_name='alunos')
     data_nascimento = models.DateField(null=True, blank=True)
     responsavel_nome = models.CharField(max_length=200, blank=True)
@@ -37,7 +37,7 @@ class PerfilAluno(models.Model):
 
 class PerfilProfessor(models.Model):
     vinculo = models.OneToOneField('escolas.Vinculo', on_delete=models.CASCADE, related_name='perfil_professor')
-    matricula_funcional = models.CharField(max_length=20)
+    matricula_funcional = models.CharField(max_length=20, blank=True)
     disciplinas = models.CharField(max_length=500, blank=True)
     turmas = models.ManyToManyField('biblioteca.Turma', related_name='professores', blank=True)
     telefone = models.CharField(max_length=20, blank=True)
@@ -52,7 +52,7 @@ class PerfilProfessor(models.Model):
 
 class PerfilAdminBiblioteca(models.Model):
     vinculo = models.OneToOneField('escolas.Vinculo', on_delete=models.CASCADE, related_name='perfil_biblioteca')
-    registro_funcional = models.CharField(max_length=20)
+    registro_funcional = models.CharField(max_length=20, blank=True)
     telefone = models.CharField(max_length=20, blank=True)
     cpf = models.CharField(max_length=14, blank=True)
 

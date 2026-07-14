@@ -13,17 +13,26 @@
     {% for perfil in professores %}
         <tr>
             <td>{{ perfil.vinculo.usuario.get_full_name }}</td>
-            <td>{{ perfil.matricula_funcional }}</td>
+            <td>{{ perfil.matricula_funcional|default:"-" }}</td>
             <td>{% for t in perfil.turmas.all %}<span class="badge bg-secondary">{{ t.codigo }}</span> {% endfor %}</td>
             <td>{{ perfil.vinculo.usuario.email }}</td>
             <td>{{ perfil.telefone|default:"-" }}</td>
-            <td>{% if perfil.vinculo.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
+            <td>
+                {% if perfil.vinculo.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}
+                {% if perfil.vinculo.cadastro_desatualizado %}
+                <span class="badge bg-warning text-dark" title="Cadastro não é atualizado desde {{ perfil.vinculo.atualizado_em|date:'Y' }}. Confirme as turmas deste ano letivo.">Cadastro desatualizado</span>
+                {% endif %}
+            </td>
             <td>
                 {% if request.vinculo.tipo == 'admin_geral' %}
                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'professor-update' perfil.vinculo.usuario.id %}">Editar</a>
                 <form method="post" action="{% url 'professor-toggle' perfil.vinculo.usuario.id %}" class="d-inline">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-danger">{% if perfil.vinculo.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+                </form>
+                <form method="post" action="{% url 'professor-excluir' perfil.vinculo.usuario.id %}" class="d-inline" onsubmit="return confirm('Remover definitivamente {{ perfil.vinculo.usuario.get_full_name }}? Esta ação não pode ser desfeita.');">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-danger">Remover</button>
                 </form>
                 {% endif %}
                 <form method="post" action="{% url 'professor-resetar-senha' perfil.vinculo.usuario.id %}" class="d-inline" onsubmit="return confirm('Gerar uma nova senha para {{ perfil.vinculo.usuario.get_full_name }}? A senha atual deixará de funcionar.');">

@@ -133,10 +133,13 @@ class Configuracao(models.Model):
     exigir_telefone_aluno = models.BooleanField(default=False)
     exigir_data_nascimento_aluno = models.BooleanField(default=False)
     exigir_responsavel_aluno = models.BooleanField(default=False)
+    exigir_matricula_aluno = models.BooleanField(default=False)
     exigir_cpf_professor = models.BooleanField(default=False)
     exigir_telefone_professor = models.BooleanField(default=False)
+    exigir_matricula_professor = models.BooleanField(default=False)
     exigir_cpf_admin_biblioteca = models.BooleanField(default=False)
     exigir_telefone_admin_biblioteca = models.BooleanField(default=False)
+    exigir_registro_funcional_admin_biblioteca = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Configuração'

@@ -63,7 +63,7 @@ class BaseUsuarioForm(forms.ModelForm):
 
 
 class AlunoForm(BaseUsuarioForm):
-    matricula = forms.CharField(max_length=20)
+    matricula = forms.CharField(max_length=20, required=False)
     turma = forms.ModelChoiceField(queryset=Turma.objects.none(), required=False)
     data_nascimento = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     responsavel_nome = forms.CharField(max_length=200, required=False)
@@ -76,6 +76,7 @@ class AlunoForm(BaseUsuarioForm):
         self.fields['turma'].queryset = Turma.objects.filter(escola=self.escola, ativa=True)
 
         config = Configuracao.get_solo(self.escola)
+        self.fields['matricula'].required = config.exigir_matricula_aluno
         self.fields['cpf'].required = config.exigir_cpf_aluno
         self.fields['telefone'].required = config.exigir_telefone_aluno
         self.fields['data_nascimento'].required = config.exigir_data_nascimento_aluno
@@ -100,7 +101,7 @@ class AlunoForm(BaseUsuarioForm):
             usuario=usuario, escola=self.escola, defaults={'tipo': Vinculo.TIPO_ALUNO, 'ativo': True}
         )
         perfil, _ = PerfilAluno.objects.get_or_create(vinculo=vinculo)
-        perfil.matricula = self.cleaned_data['matricula']
+        perfil.matricula = self.cleaned_data.get('matricula', '')
         perfil.turma = self.cleaned_data.get('turma')
         perfil.data_nascimento = self.cleaned_data.get('data_nascimento')
         perfil.responsavel_nome = self.cleaned_data.get('responsavel_nome', '')
@@ -108,12 +109,13 @@ class AlunoForm(BaseUsuarioForm):
         perfil.telefone = self.cleaned_data.get('telefone', '')
         perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
+        vinculo.save()
         self.instance = usuario
         return usuario
 
 
 class ProfessorForm(BaseUsuarioForm):
-    matricula_funcional = forms.CharField(max_length=20)
+    matricula_funcional = forms.CharField(max_length=20, required=False)
     disciplinas = forms.CharField(max_length=500, required=False)
     turmas = forms.ModelMultipleChoiceField(queryset=Turma.objects.none(), required=False)
     telefone = forms.CharField(max_length=20, required=False, label='Telefone')
@@ -124,6 +126,7 @@ class ProfessorForm(BaseUsuarioForm):
         self.fields['turmas'].queryset = Turma.objects.filter(escola=self.escola, ativa=True)
 
         config = Configuracao.get_solo(self.escola)
+        self.fields['matricula_funcional'].required = config.exigir_matricula_professor
         self.fields['cpf'].required = config.exigir_cpf_professor
         self.fields['telefone'].required = config.exigir_telefone_professor
 
@@ -143,18 +146,19 @@ class ProfessorForm(BaseUsuarioForm):
             usuario=usuario, escola=self.escola, defaults={'tipo': Vinculo.TIPO_PROFESSOR, 'ativo': True}
         )
         perfil, _ = PerfilProfessor.objects.get_or_create(vinculo=vinculo)
-        perfil.matricula_funcional = self.cleaned_data['matricula_funcional']
+        perfil.matricula_funcional = self.cleaned_data.get('matricula_funcional', '')
         perfil.disciplinas = self.cleaned_data.get('disciplinas', '')
         perfil.telefone = self.cleaned_data.get('telefone', '')
         perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
         perfil.turmas.set(self.cleaned_data.get('turmas') or [])
+        vinculo.save()
         self.instance = usuario
         return usuario
 
 
 class AdminBibliotecaForm(BaseUsuarioForm):
-    registro_funcional = forms.CharField(max_length=20)
+    registro_funcional = forms.CharField(max_length=20, required=False)
     telefone = forms.CharField(max_length=20, required=False, label='Telefone')
     cpf = forms.CharField(max_length=14, required=False, label='CPF')
 
@@ -162,6 +166,7 @@ class AdminBibliotecaForm(BaseUsuarioForm):
         super().__init__(*args, **kwargs)
 
         config = Configuracao.get_solo(self.escola)
+        self.fields['registro_funcional'].required = config.exigir_registro_funcional_admin_biblioteca
         self.fields['cpf'].required = config.exigir_cpf_admin_biblioteca
         self.fields['telefone'].required = config.exigir_telefone_admin_biblioteca
 
@@ -179,9 +184,10 @@ class AdminBibliotecaForm(BaseUsuarioForm):
             usuario=usuario, escola=self.escola, defaults={'tipo': Vinculo.TIPO_ADMIN_BIBLIOTECA, 'ativo': True}
         )
         perfil, _ = PerfilAdminBiblioteca.objects.get_or_create(vinculo=vinculo)
-        perfil.registro_funcional = self.cleaned_data['registro_funcional']
+        perfil.registro_funcional = self.cleaned_data.get('registro_funcional', '')
         perfil.telefone = self.cleaned_data.get('telefone', '')
         perfil.cpf = self.cleaned_data.get('cpf', '')
         perfil.save()
+        vinculo.save()
         self.instance = usuario
         return usuario

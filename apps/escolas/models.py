@@ -38,6 +38,7 @@ class Vinculo(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ['usuario', 'escola']
@@ -45,3 +46,9 @@ class Vinculo(models.Model):
 
     def __str__(self):
         return f'{self.usuario} @ {self.escola} ({self.get_tipo_display()})'
+
+    @property
+    def cadastro_desatualizado(self):
+        from django.utils import timezone
+
+        return self.atualizado_em.year < timezone.now().year

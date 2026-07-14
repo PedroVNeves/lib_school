@@ -137,6 +137,33 @@ class AlunoUpdateView(AdminGeralRequiredMixin, UpdateView):
         return response
 
 
+class AlunoExcluirView(AdminGeralRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(
+            Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_ALUNO, escola=request.escola
+        )
+        if Emprestimo.objects.filter(
+            usuario=vinculo.usuario, escola=request.escola, status__in=[Emprestimo.STATUS_ATIVO, Emprestimo.STATUS_ATRASADO]
+        ).exists():
+            messages.error(
+                request,
+                'Não é possível remover: há empréstimos ativos ou atrasados. '
+                'Registre a devolução ou apenas desative o cadastro.',
+            )
+            return redirect('aluno-list')
+        nome = str(vinculo.usuario)
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Removeu aluno {nome}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        vinculo.delete()
+        messages.success(request, f'Aluno {nome} removido com sucesso.')
+        return redirect('aluno-list')
+
+
 class AlunoToggleAtivoView(AdminGeralRequiredMixin, View):
     def post(self, request, pk):
         vinculo = get_object_or_404(
@@ -227,6 +254,33 @@ class ProfessorUpdateView(AdminGeralRequiredMixin, UpdateView):
         return kwargs
 
 
+class ProfessorExcluirView(AdminGeralRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(
+            Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_PROFESSOR, escola=request.escola
+        )
+        if Emprestimo.objects.filter(
+            usuario=vinculo.usuario, escola=request.escola, status__in=[Emprestimo.STATUS_ATIVO, Emprestimo.STATUS_ATRASADO]
+        ).exists():
+            messages.error(
+                request,
+                'Não é possível remover: há empréstimos ativos ou atrasados. '
+                'Registre a devolução ou apenas desative o cadastro.',
+            )
+            return redirect('professor-list')
+        nome = str(vinculo.usuario)
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Removeu professor {nome}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        vinculo.delete()
+        messages.success(request, f'Professor {nome} removido com sucesso.')
+        return redirect('professor-list')
+
+
 class ProfessorToggleAtivoView(AdminGeralRequiredMixin, View):
     def post(self, request, pk):
         vinculo = get_object_or_404(
@@ -294,6 +348,46 @@ class AdminBibliotecaCreateView(AdminGeralRequiredMixin, CreateView):
         )
         messages.success(self.request, 'Responsável pela biblioteca cadastrado com sucesso.')
         return response
+
+
+class AdminBibliotecaUpdateView(AdminGeralRequiredMixin, UpdateView):
+    model = Usuario
+    form_class = AdminBibliotecaForm
+    template_name = 'accounts/admin_biblioteca_form.html'
+    success_url = reverse_lazy('admin-biblioteca-list')
+
+    def get_queryset(self):
+        return Usuario.objects.filter(
+            vinculos__tipo=Vinculo.TIPO_ADMIN_BIBLIOTECA, vinculos__escola=self.request.escola
+        ).distinct()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['escola'] = self.request.escola
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Responsável pela biblioteca atualizado com sucesso.')
+        return response
+
+
+class AdminBibliotecaExcluirView(AdminGeralRequiredMixin, View):
+    def post(self, request, pk):
+        vinculo = get_object_or_404(
+            Vinculo, usuario_id=pk, tipo=Vinculo.TIPO_ADMIN_BIBLIOTECA, escola=request.escola
+        )
+        nome = str(vinculo.usuario)
+        AuditLog.objects.create(
+            escola=request.escola,
+            usuario=request.user,
+            acao=f'Removeu responsável de biblioteca {nome}',
+            modelo='Usuario',
+            objeto_id=vinculo.usuario_id,
+        )
+        vinculo.delete()
+        messages.success(request, f'Responsável pela biblioteca {nome} removido com sucesso.')
+        return redirect('admin-biblioteca-list')
 
 
 class AdminBibliotecaToggleAtivoView(AdminGeralRequiredMixin, View):

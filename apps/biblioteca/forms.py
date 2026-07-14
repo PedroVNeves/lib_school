@@ -118,7 +118,8 @@ class ConfiguracaoForm(forms.ModelForm):
             'dias_lembrete_vencimento', 'max_dias_notificacao_atraso',
             'metodo_recuperacao_senha',
             'exigir_cpf_aluno', 'exigir_telefone_aluno',
-            'exigir_data_nascimento_aluno', 'exigir_responsavel_aluno',
-            'exigir_cpf_professor', 'exigir_telefone_professor',
+            'exigir_data_nascimento_aluno', 'exigir_responsavel_aluno', 'exigir_matricula_aluno',
+            'exigir_cpf_professor', 'exigir_telefone_professor', 'exigir_matricula_professor',
             'exigir_cpf_admin_biblioteca', 'exigir_telefone_admin_biblioteca',
+            'exigir_registro_funcional_admin_biblioteca',
         ]
