@@ -29,6 +29,7 @@
             <button class="btn btn-outline-light btn-sm" type="submit">Trocar escola</button>
         </form>
         {% endif %}
+        <a href="{% url 'password-change' %}" class="btn btn-outline-light btn-sm me-2">Alterar senha</a>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button class="btn btn-outline-light btn-sm" type="submit">Sair</button>

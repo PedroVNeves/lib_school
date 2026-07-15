@@ -24,6 +24,15 @@ class CustomLoginView(auth_views.LoginView):
     redirect_authenticated_user = True
 
 
+class MinhaSenhaChangeView(LoginRequiredMixin, auth_views.PasswordChangeView):
+    template_name = 'accounts/password_change.html'
+    success_url = reverse_lazy('password-change-done')
+
+
+class MinhaSenhaChangeDoneView(LoginRequiredMixin, auth_views.PasswordChangeDoneView):
+    template_name = 'accounts/password_change_done.html'
+
+
 @login_required
 def dashboard_redirect(request):
     user = request.user

@@ -4,6 +4,9 @@ from . import views
 
 urlpatterns = [
     path('dashboard/', views.dashboard_redirect, name='dashboard'),
+
+    path('minha-senha/', views.MinhaSenhaChangeView.as_view(), name='password-change'),
+    path('minha-senha/sucesso/', views.MinhaSenhaChangeDoneView.as_view(), name='password-change-done'),
     path('dashboard/admin-geral/', views.DashboardAdminGeralView.as_view(), name='dashboard-admin-geral'),
     path('dashboard/professor/', views.DashboardProfessorView.as_view(), name='dashboard-professor'),
     path('dashboard/aluno/', views.DashboardAlunoView.as_view(), name='dashboard-aluno'),
