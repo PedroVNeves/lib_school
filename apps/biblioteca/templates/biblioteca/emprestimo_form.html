@@ -1,11 +1,36 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}
+{% load static crispy_forms_tags %}
 {% block content %}
 <h1 class="h3 mb-3">Novo Empréstimo</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form|crispy }}
-    <button type="submit" class="btn btn-primary">Registrar Empréstimo</button>
-    <a href="{% url 'emprestimo-list' %}" class="btn btn-outline-secondary">Cancelar</a>
-</form>
+<div class="card border-0 shadow-sm" style="max-width: 500px;">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div class="usuario-busca mb-3" data-search-url="{% url 'usuario-busca' %}">
+                <label class="form-label" for="usuario_busca_input">Aluno ou professor</label>
+                <input type="text" id="usuario_busca_input" class="form-control usuario-busca-input" autocomplete="off"
+                       placeholder="Digite o nome, e-mail ou matrícula..."
+                       value="{{ form.vinculo_selecionado.usuario.get_full_name|default:'' }}">
+                {{ form.vinculo }}
+                <div class="list-group usuario-busca-resultados d-none"></div>
+                {% if form.vinculo.errors %}<div class="text-danger small mt-1">{{ form.vinculo.errors|join:', ' }}</div>{% endif %}
+            </div>
+            <div class="livro-busca mb-3" data-search-url="{% url 'livro-busca' %}">
+                <label class="form-label" for="livro_busca_input">Livro</label>
+                <input type="text" id="livro_busca_input" class="form-control livro-busca-input" autocomplete="off"
+                       placeholder="Digite o título do livro..." value="{{ form.livro_selecionado.titulo|default:'' }}">
+                {{ form.livro }}
+                <div class="list-group livro-busca-resultados d-none"></div>
+                {% if form.livro.errors %}<div class="text-danger small mt-1">{{ form.livro.errors|join:', ' }}</div>{% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">Registrar Empréstimo</button>
+            <a href="{% url 'emprestimo-list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/livro-busca.js' %}"></script>
+<script src="{% static 'js/usuario-busca.js' %}"></script>
 {% endblock %}

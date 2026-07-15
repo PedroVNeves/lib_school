@@ -208,3 +208,23 @@ body {
     padding: 0;
     font-size: 1rem;
 }
+
+/* ---- Livro/usuário autocomplete (empréstimos) ---- */
+.livro-busca, .usuario-busca {
+    position: relative;
+}
+.livro-busca-resultados, .usuario-busca-resultados {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 240px;
+    overflow-y: auto;
+    border-radius: .5rem;
+}
+
+/* ---- Empréstimo cards (lista responsiva) ---- */
+.emprestimo-card .emprestimo-status {
+    flex-shrink: 0;
+}

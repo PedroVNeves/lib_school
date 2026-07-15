@@ -2,7 +2,9 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, Q, Sum, Value
+from django.db.models.functions import Concat
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView, View
@@ -18,6 +20,7 @@ from .forms import (
     EmprestimoCreateForm,
     EmprestimoTurmaCreateForm,
     ExemplarQuantidadeForm,
+    ItemEmprestimoTurmaFormSet,
     LivroForm,
     RegistroLeituraForm,
     TurmaForm,
@@ -298,6 +301,61 @@ class EmprestimoListView(AdminBibliotecaRequiredMixin, ListView):
         return qs
 
 
+class LivroBuscaView(AdminBibliotecaRequiredMixin, View):
+    """Autocomplete de livros para os formulários de empréstimo — nunca retorna o catálogo inteiro."""
+
+    def get(self, request):
+        termo = request.GET.get('q', '').strip()
+        qs = Livro.objects.filter(escola=request.escola, ativo=True)
+        if termo:
+            qs = qs.filter(titulo__icontains=termo)
+        qs = qs.order_by('titulo')[:20]
+        resultados = [
+            {'id': livro.pk, 'titulo': livro.titulo, 'disponiveis': livro.exemplares_disponiveis}
+            for livro in qs
+        ]
+        return JsonResponse({'resultados': resultados})
+
+
+class VinculoBuscaView(AdminBibliotecaRequiredMixin, View):
+    """Autocomplete de alunos/professores para o empréstimo individual — busca por nome, e-mail ou matrícula."""
+
+    def get(self, request):
+        termo = request.GET.get('q', '').strip()
+        qs = (
+            Vinculo.objects.filter(
+                escola=request.escola, ativo=True, tipo__in=[Vinculo.TIPO_ALUNO, Vinculo.TIPO_PROFESSOR]
+            )
+            .select_related('usuario', 'perfil_aluno', 'perfil_professor')
+            .annotate(nome_completo=Concat('usuario__first_name', Value(' '), 'usuario__last_name'))
+        )
+        if termo:
+            qs = qs.filter(
+                Q(nome_completo__icontains=termo)
+                | Q(usuario__email__icontains=termo)
+                | Q(perfil_aluno__matricula__icontains=termo)
+                | Q(perfil_professor__matricula_funcional__icontains=termo)
+            )
+        qs = qs.order_by('usuario__first_name', 'usuario__last_name')[:20]
+        resultados = []
+        for vinculo in qs:
+            perfil_aluno = getattr(vinculo, 'perfil_aluno', None)
+            perfil_professor = getattr(vinculo, 'perfil_professor', None)
+            identificador = ''
+            if vinculo.tipo == Vinculo.TIPO_ALUNO and perfil_aluno:
+                identificador = perfil_aluno.matricula
+            elif vinculo.tipo == Vinculo.TIPO_PROFESSOR and perfil_professor:
+                identificador = perfil_professor.matricula_funcional
+            resultados.append({
+                'id': vinculo.pk,
+                'nome': vinculo.usuario.get_full_name() or vinculo.usuario.email,
+                'tipo': vinculo.get_tipo_display(),
+                'identificador': identificador,
+                'email': vinculo.usuario.email,
+            })
+        return JsonResponse({'resultados': resultados})
+
+
 class EmprestimoCreateView(AdminBibliotecaRequiredMixin, View):
     template_name = 'biblioteca/emprestimo_form.html'
 
@@ -307,21 +365,8 @@ class EmprestimoCreateView(AdminBibliotecaRequiredMixin, View):
     def post(self, request):
         form = EmprestimoCreateForm(request.POST, escola=request.escola)
         if form.is_valid():
-            busca = form.cleaned_data['usuario_busca'].strip()
+            vinculo = form.cleaned_data['vinculo']
             livro = form.cleaned_data['livro']
-            vinculo = (
-                Vinculo.objects.filter(escola=request.escola, ativo=True)
-                .filter(
-                    Q(perfil_aluno__matricula__iexact=busca)
-                    | Q(perfil_professor__matricula_funcional__iexact=busca)
-                    | Q(usuario__email__iexact=busca)
-                )
-                .select_related('usuario')
-                .first()
-            )
-            if not vinculo:
-                messages.error(request, 'Usuário não encontrado (busque por matrícula ou e-mail).')
-                return render(request, self.template_name, {'form': form})
             try:
                 emprestimo = registrar_emprestimo(vinculo=vinculo, livro=livro, registrado_por=request.user)
                 messages.success(
@@ -442,16 +487,21 @@ class EmprestimoTurmaCreateView(AdminBibliotecaRequiredMixin, View):
     template_name = 'biblioteca/emprestimo_turma_form.html'
 
     def get(self, request):
-        return render(request, self.template_name, {'form': EmprestimoTurmaCreateForm(escola=request.escola)})
+        ctx = {
+            'form': EmprestimoTurmaCreateForm(escola=request.escola),
+            'formset': ItemEmprestimoTurmaFormSet(escola=request.escola),
+        }
+        return render(request, self.template_name, ctx)
 
     def post(self, request):
         form = EmprestimoTurmaCreateForm(request.POST, escola=request.escola)
-        if form.is_valid():
+        formset = ItemEmprestimoTurmaFormSet(request.POST, escola=request.escola)
+        if form.is_valid() and formset.is_valid():
             try:
                 emprestimo_turma = registrar_emprestimo_turma(
                     vinculo=form.cleaned_data['professor_responsavel'],
                     turma=form.cleaned_data['turma'],
-                    itens=form.itens_selecionados(),
+                    itens=formset.itens_selecionados(),
                     data_prevista_devolucao=form.cleaned_data['data_prevista_devolucao'],
                     registrado_por=request.user,
                 )
@@ -461,7 +511,7 @@ class EmprestimoTurmaCreateView(AdminBibliotecaRequiredMixin, View):
                 messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
         else:
             messages.error(request, 'Confira os dados do formulário.')
-        return render(request, self.template_name, {'form': form})
+        return render(request, self.template_name, {'form': form, 'formset': formset})
 
 
 class EmprestimoTurmaDetailView(LoginRequiredMixin, DetailView):

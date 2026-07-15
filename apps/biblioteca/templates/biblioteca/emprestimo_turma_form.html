@@ -1,16 +1,96 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}
+{% load static crispy_forms_tags %}
 {% block content %}
 <h1 class="h3 mb-4">Novo Empréstimo de Turma</h1>
-<p class="text-muted small">Escolha a turma, o professor responsável e até 6 títulos diferentes — geralmente devolvidos no mesmo dia.</p>
+<p class="text-muted small">Escolha a turma e o professor responsável, e adicione quantos livros forem necessários.</p>
 <div class="card border-0 shadow-sm" style="max-width: 700px;">
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
-            {{ form|crispy }}
-            <button type="submit" class="btn btn-primary">Registrar Empréstimo de Turma</button>
-            <a href="{% url 'emprestimo-list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            {{ form.turma|as_crispy_field }}
+            {{ form.professor_responsavel|as_crispy_field }}
+            {{ form.data_prevista_devolucao|as_crispy_field }}
+
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+            <div class="alert alert-danger py-2 small">{{ formset.non_form_errors|join:', ' }}</div>
+            {% endif %}
+
+            <label class="form-label">Livros</label>
+            <div id="itens-formset">
+                {% for item_form in formset %}
+                <div class="row g-2 align-items-start mb-2 item-form-row">
+                    <div class="col-8">
+                        <div class="livro-busca" data-search-url="{% url 'livro-busca' %}">
+                            <input type="text" class="form-control livro-busca-input" autocomplete="off"
+                                   placeholder="Digite o título do livro..." value="{{ item_form.livro_selecionado.titulo|default:'' }}">
+                            {{ item_form.livro }}
+                            <div class="list-group livro-busca-resultados d-none"></div>
+                            {% if item_form.livro.errors %}<div class="text-danger small mt-1">{{ item_form.livro.errors|join:', ' }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        {{ item_form.quantidade|as_crispy_field }}
+                    </div>
+                    <div class="col-1 pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item-row" title="Remover livro">&times;</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" id="add-item-row" class="btn btn-outline-secondary btn-sm mb-3">+ Adicionar livro</button>
+
+            <template id="empty-item-form">
+                <div class="row g-2 align-items-start mb-2 item-form-row">
+                    <div class="col-8">
+                        <div class="livro-busca" data-search-url="{% url 'livro-busca' %}">
+                            <input type="text" class="form-control livro-busca-input" autocomplete="off" placeholder="Digite o título do livro...">
+                            {{ formset.empty_form.livro }}
+                            <div class="list-group livro-busca-resultados d-none"></div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        {{ formset.empty_form.quantidade|as_crispy_field }}
+                    </div>
+                    <div class="col-1 pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item-row" title="Remover livro">&times;</button>
+                    </div>
+                </div>
+            </template>
+
+            <div>
+                <button type="submit" class="btn btn-primary mt-2">Registrar Empréstimo de Turma</button>
+                <a href="{% url 'emprestimo-list' %}" class="btn btn-outline-secondary mt-2">Cancelar</a>
+            </div>
         </form>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/livro-busca.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('itens-formset');
+    const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+    const emptyTemplate = document.getElementById('empty-item-form');
+
+    function wireRemoveButton(row) {
+        row.querySelector('.remove-item-row').addEventListener('click', () => row.remove());
+    }
+
+    document.getElementById('add-item-row').addEventListener('click', () => {
+        const index = parseInt(totalFormsInput.value, 10);
+        const html = emptyTemplate.innerHTML.replace(/__prefix__/g, index);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html.trim();
+        const newRow = wrapper.firstElementChild;
+        container.appendChild(newRow);
+        totalFormsInput.value = index + 1;
+        newRow.querySelectorAll('.livro-busca').forEach(window.initLivroBusca);
+        wireRemoveButton(newRow);
+    });
+
+    container.querySelectorAll('.item-form-row').forEach(wireRemoveButton);
+});
+</script>
 {% endblock %}

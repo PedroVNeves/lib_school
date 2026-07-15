@@ -26,6 +26,8 @@ urlpatterns = [
     path('turmas/<int:pk>/editar/', views.TurmaUpdateView.as_view(), name='turma-update'),
 
     path('emprestimos/', views.EmprestimoListView.as_view(), name='emprestimo-list'),
+    path('emprestimos/busca-livro/', views.LivroBuscaView.as_view(), name='livro-busca'),
+    path('emprestimos/busca-usuario/', views.VinculoBuscaView.as_view(), name='usuario-busca'),
     path('emprestimos/novo/', views.EmprestimoCreateView.as_view(), name='emprestimo-create'),
     path('emprestimos/<int:pk>/devolver/', views.EmprestimoDevolverView.as_view(), name='emprestimo-devolver'),
 

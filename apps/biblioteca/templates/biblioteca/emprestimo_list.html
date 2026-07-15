@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3">Empréstimos</h1>
-    <div class="d-flex gap-2">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Empréstimos</h1>
+    <div class="d-flex flex-column flex-sm-row gap-2">
         <a class="btn btn-outline-primary" href="{% url 'emprestimo-turma-create' %}">+ Novo Empréstimo de Turma</a>
         <a class="btn btn-primary" href="{% url 'emprestimo-create' %}">+ Novo Empréstimo</a>
     </div>
@@ -15,33 +15,38 @@
         <option value="devolvido" {% if request.GET.status == 'devolvido' %}selected{% endif %}>Devolvido</option>
     </select>
 </form>
-<div class="table-responsive">
-<table class="table">
-    <thead><tr><th>Usuário</th><th>Livro</th><th>Devolução prevista</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-    {% for e in emprestimos %}
-        <tr>
-            <td>{{ e.usuario.get_full_name }}</td>
-            <td>{{ e.livro.titulo }}</td>
-            <td>{{ e.data_prevista_devolucao|date:"d/m/Y" }}</td>
-            <td>
+<div class="vstack gap-2">
+{% for e in emprestimos %}
+    <div class="card border-0 shadow-sm emprestimo-card">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+            <div class="text-truncate">
+                <div class="fw-semibold text-truncate">{{ e.livro.titulo }}</div>
+                <div class="small text-muted text-truncate">
+                    {{ e.usuario.get_full_name }} · Devolução {{ e.data_prevista_devolucao|date:"d/m/Y" }}
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 emprestimo-status">
                 {% if e.status == 'devolvido' %}<span class="badge bg-secondary">Devolvido</span>
                 {% elif e.status == 'atrasado' %}<span class="badge bg-danger">Atrasado</span>
                 {% else %}<span class="badge bg-success">Ativo</span>{% endif %}
-            </td>
-            <td>
                 {% if e.status != 'devolvido' %}
                 <form method="post" action="{% url 'emprestimo-devolver' e.pk %}">
                     {% csrf_token %}
-                    <button class="btn btn-sm btn-outline-primary">Registrar devolução</button>
+                    <button class="btn btn-sm btn-outline-primary">Devolver</button>
                 </form>
                 {% endif %}
-            </td>
-        </tr>
-    {% empty %}
-        <tr><td colspan="5">Nenhum empréstimo encontrado.</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+            </div>
+        </div>
+    </div>
+{% empty %}
+    <p class="text-muted">Nenhum empréstimo encontrado.</p>
+{% endfor %}
 </div>
+{% if is_paginated %}
+<nav class="mt-4"><ul class="pagination">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Anterior</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Próxima</a></li>{% endif %}
+</ul></nav>
+{% endif %}
 {% endblock %}

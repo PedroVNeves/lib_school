@@ -6,8 +6,6 @@ from apps.escolas.models import Vinculo
 
 from .models import Autor, Avaliacao, Configuracao, Emprestimo, Exemplar, Genero, Livro, Turma
 
-NUM_LINHAS_EMPRESTIMO_TURMA = 6
-
 
 class LivroForm(forms.ModelForm):
     class Meta:
@@ -52,12 +50,36 @@ class GeneroForm(forms.ModelForm):
 
 
 class EmprestimoCreateForm(forms.Form):
-    usuario_busca = forms.CharField(label='Matrícula ou e-mail do usuário')
-    livro = forms.ModelChoiceField(queryset=Livro.objects.none())
+    vinculo = forms.ModelChoiceField(
+        queryset=Vinculo.objects.none(),
+        label='Aluno ou professor',
+        widget=forms.HiddenInput(attrs={'class': 'usuario-busca-hidden'}),
+    )
+    livro = forms.ModelChoiceField(
+        queryset=Livro.objects.none(), widget=forms.HiddenInput(attrs={'class': 'livro-busca-hidden'})
+    )
 
     def __init__(self, *args, escola=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.escola = escola
+        # Aluno/professor e livro são escolhidos via autocomplete (AJAX): os querysets
+        # aqui só validam o id enviado — nunca são usados para renderizar opções.
+        self.fields['vinculo'].queryset = Vinculo.objects.filter(
+            escola=escola, ativo=True, tipo__in=[Vinculo.TIPO_ALUNO, Vinculo.TIPO_PROFESSOR]
+        )
         self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+
+    def vinculo_selecionado(self):
+        valor = self['vinculo'].value()
+        if not valor:
+            return None
+        return Vinculo.objects.filter(escola=self.escola, pk=valor).select_related('usuario').first()
+
+    def livro_selecionado(self):
+        valor = self['livro'].value()
+        if not valor:
+            return None
+        return Livro.objects.filter(escola=self.escola, pk=valor).first()
 
 
 class VinculoProfessorChoiceField(forms.ModelChoiceField):
@@ -78,21 +100,63 @@ class EmprestimoTurmaCreateForm(forms.Form):
         self.fields['professor_responsavel'].queryset = (
             Vinculo.objects.filter(escola=escola, tipo=Vinculo.TIPO_PROFESSOR, ativo=True).select_related('usuario')
         )
-        livros_qs = Livro.objects.filter(escola=escola, ativo=True)
-        for i in range(1, NUM_LINHAS_EMPRESTIMO_TURMA + 1):
-            self.fields[f'livro_{i}'] = forms.ModelChoiceField(queryset=livros_qs, required=False, label=f'Livro {i}')
-            self.fields[f'quantidade_{i}'] = forms.IntegerField(
-                required=False, min_value=1, initial=1, label='Quantidade'
-            )
+
+
+class ItemEmprestimoTurmaForm(forms.Form):
+    """Uma linha (livro + quantidade) do empréstimo de turma.
+
+    O campo `livro` é preenchido via autocomplete (AJAX) no template — o widget
+    escondido só carrega o id já escolhido, nunca o catálogo inteiro (ver
+    LivroBuscaView), então a lista de livros pode crescer sem limite de linhas.
+    """
+
+    livro = forms.ModelChoiceField(
+        queryset=Livro.objects.none(),
+        required=False,
+        widget=forms.HiddenInput(attrs={'class': 'livro-busca-hidden'}),
+    )
+    quantidade = forms.IntegerField(required=False, min_value=1, initial=1, label='Quantidade')
+
+    def __init__(self, *args, escola=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.escola = escola
+        self.fields['livro'].queryset = Livro.objects.filter(escola=escola, ativo=True)
+
+    def livro_selecionado(self):
+        valor = self['livro'].value()
+        if not valor:
+            return None
+        return Livro.objects.filter(escola=self.escola, pk=valor).first()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        livro = cleaned_data.get('livro')
+        quantidade = cleaned_data.get('quantidade')
+        if livro and not quantidade:
+            self.add_error('quantidade', 'Informe a quantidade.')
+        return cleaned_data
+
+
+class BaseItemEmprestimoTurmaFormSet(forms.BaseFormSet):
+    def __init__(self, *args, escola=None, **kwargs):
+        self.escola = escola
+        super().__init__(*args, form_kwargs={'escola': escola}, **kwargs)
 
     def itens_selecionados(self):
         itens = []
-        for i in range(1, NUM_LINHAS_EMPRESTIMO_TURMA + 1):
-            livro = self.cleaned_data.get(f'livro_{i}')
-            quantidade = self.cleaned_data.get(f'quantidade_{i}')
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            livro = form.cleaned_data.get('livro')
+            quantidade = form.cleaned_data.get('quantidade')
             if livro and quantidade:
                 itens.append((livro, quantidade))
         return itens
+
+
+ItemEmprestimoTurmaFormSet = forms.formset_factory(
+    ItemEmprestimoTurmaForm, formset=BaseItemEmprestimoTurmaFormSet, extra=3, min_num=1, validate_min=True,
+)
 
 
 class RegistroLeituraForm(forms.Form):
